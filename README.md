@@ -154,3 +154,12 @@ npm run preview
 - `src/catalog.js`: brend, seriya va model qisqartmalari.
 - `sw.js`: faqat frontend fayllarining offline keshi.
 - `tests/`: hisoblash, ruxsatlar, atomarlik va davr chegaralari tekshiruvlari.
+
+## Interfeys mavzulari
+
+Yuqoridagi **Mavzu** tugmasi to‘rtta uslubni ochadi: **Sahro**, **O‘rmon**,
+**Osmon** va macOS / iOS ruhidagi **Shisha**. Tanlov `telefonzona-theme`
+kalitida shu brauzerda saqlanadi, savdo va ombor ma’lumotlariga tegmaydi.
+Shisha mavzusida yarim shaffof panellar, fon xiralashuvi va sekin ko‘k
+yorug‘lik harakati bor. Qurilmaning `prefers-reduced-motion` sozlamasida
+animatsiyalar o‘chadi; blur mavjud bo‘lmasa o‘qiladigan yaxlit fon ishlaydi.
