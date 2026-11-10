@@ -7,7 +7,7 @@ const root = fileURLToPath(new URL(process.argv.includes('--dist') ? '../dist/' 
 const port = Number(process.env.PORT || 4173);
 const types = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8' };
 // Only frontend files are served. Project configuration and tests stay private.
-const allowed = new Set(['/index.html', '/sw.js', '/src/app.js', '/src/model.js', '/src/business.js', '/src/backup.js', '/src/access.js', '/src/admin.js', '/src/ownership.js', '/src/catalog.js', '/src/inventory-entry.js', '/src/style.css', '/src/themes.js', '/src/themes.css']);
+const allowed = new Set(['/index.html', '/sw.js', '/src/app.js', '/src/model.js', '/src/business.js', '/src/backup.js', '/src/access.js', '/src/admin.js', '/src/ownership.js', '/src/catalog.js', '/src/inventory-entry.js', '/src/style.css', '/src/themes.js', '/src/themes.css', '/src/responsive.js', '/src/responsive.css']);
 const server = http.createServer(async (req, res) => {
   if (!['GET', 'HEAD'].includes(req.method)) {
     res.writeHead(405, { Allow: 'GET, HEAD' }).end();

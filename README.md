@@ -163,3 +163,21 @@ kalitida shu brauzerda saqlanadi, savdo va ombor ma’lumotlariga tegmaydi.
 Shisha mavzusida yarim shaffof panellar, fon xiralashuvi va sekin ko‘k
 yorug‘lik harakati bor. Qurilmaning `prefers-reduced-motion` sozlamasida
 animatsiyalar o‘chadi; blur mavjud bo‘lmasa o‘qiladigan yaxlit fon ishlaydi.
+
+## Telefonda ishlatish
+
+Telefon ko‘rinishida pastki menyudan **Asosiy**, **Ombor**, **Sotuv**, **Tarix**
+va **Bo‘limlar** ochiladi. Faqat profilga ruxsat berilgan bo‘limlar ko‘rinadi.
+Katalogda qidiruv birinchi turadi; brend, seriya, kategoriya va filtrlar
+yon tomonga suriladi. Mahsulot qo‘shilgach, pastdagi savat tugmasi jami
+summa va sonini ko‘rsatadi; bosilganda narx va egani tekshirish joyiga olib boradi.
+Qidiruv klaviaturasidagi qidirish tugmasi klaviaturani yopadi.
+
+320 px dan boshlab ro‘yxatlar kartochkalar, shakllar katta maydonlar,
+modal oynalar esa pastdan ochiladigan panel sifatida chiqadi. G‘iloflarni
+guruhlab kiritish jadvali ham telefonda har bir sifat uchun alohida karta
+bo‘ladi. Raqam maydonlarida raqamli klaviatura so‘raladi. iPhone xavfsiz
+chet oralig‘i va harakatni kamaytirish sozlamasi hisobga olingan.
+Kompyuterda mavjud yon menyu va jadvallar saqlanadi.
+
+Ochiq demo: https://telefonzona-demo-03c5ad5.umidjonanvarov230.chatgpt.site
