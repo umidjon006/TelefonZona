@@ -1,8 +1,9 @@
 import {requirePermission,can} from './access.js';
 import {prepareAdmin,DEFAULT_MATERIALS} from './admin.js';
-import {USERS, uid, checkout, refund, saleTotal, log, stock} from './model.js';
+import {CASH_ACCOUNT, USERS, uid, checkout, refund, saleTotal, log, stock} from './model.js';
 
-export const ACCOUNTS = [['till1','1-kassa'],['till2','2-kassa'],['bank','Bank / karta']];
+export const ACCOUNTS = [[CASH_ACCOUNT,'Umumiy kassa']];
+export const LEGACY_CASH_ACCOUNTS = ['till1','till2','bank'];
 export const AUDIENCES = [['men','Erkaklar uchun'],['women','Ayollar uchun']];
 export const MATERIALS = DEFAULT_MATERIALS;
 const ZONE = 'Asia/Tashkent';
@@ -13,7 +14,7 @@ const actorOK = actor => {if(!USERS.some(u=>u.id===actor))throw Error('Sotuvchin
 const bossOnly = actor => {actorOK(actor);if(actor!=='aziz')throw Error('Bu amal faqat boshliq uchun.');};
 const amountOK = (amount, zero=false) => {if(!Number.isSafeInteger(amount)||amount<(zero?0:1)||amount>LIMIT)throw Error('Summani butun so‘mda kiriting.');};
 const noteOK = note => {if(!String(note||'').trim()||String(note).length>500)throw Error('Sabab / izohni kiriting (500 belgigacha).');};
-const accountOK = account => {if(!ACCOUNTS.some(([id])=>id===account))throw Error('Kassa yoki bankni tanlang.');};
+const accountOK = account => {if(!ACCOUNTS.some(([id])=>id===account))throw Error('Umumiy kassani tanlang.');};
 const validPhone = value => /^\+?[\d\s()-]{7,22}$/.test(value||'')&&/^\d{7,15}$/.test(String(value).replace(/\D/g,''));
 const validDate = value => /^\d{4}-\d{2}-\d{2}$/.test(value||'')&&Number.isFinite(Date.parse(value+'T12:00:00+05:00'))&&localDate(new Date(value+'T12:00:00+05:00'))===value;
 export function eventTime(event) {return new Date(event.at || `${event.date}T${event.time || '12:00'}:00+05:00`).getTime();}
@@ -22,7 +23,11 @@ export function eventTime(event) {return new Date(event.at || `${event.date}T${e
 export function prepareState(state) {
   prepareAdmin(state);
   for(const key of ['movements','debts','rents','notices','operations','defects'])state[key] ||= [];
-  state.settings.openingAccounts ||= {till1:state.settings.openingCash||0,till2:0,bank:0};
+  const {openingAccounts,openingCash} = state.settings;
+  const openingBalance = openingAccounts
+    ? openingAccounts[CASH_ACCOUNT] ?? LEGACY_CASH_ACCOUNTS.reduce((sum,id)=>sum+(openingAccounts[id] ?? 0),0)
+    : openingCash ?? 0;
+  state.settings.openingAccounts = {[CASH_ACCOUNT]:openingBalance};
   for(const expense of state.expenses.filter(e=>e.category==='Ijara'&&!e.rentId)) {
     const month=expense.date.slice(0,7),id='legacy-rent-'+expense.id;
     // Historical payments may be installments for one month.
@@ -68,7 +73,7 @@ export function recordSale(state, cart, actor, data, at = new Date()) {
       ||data.due<localDate(at))throw Error('Nasiya uchun ism, telefon va bugungi / kelajakdagi to‘lov sanasini kiriting.');
   }
   return atomic(state,draft=>{
-    const payment=data.account==='bank'?'Karta':'Naqd';
+    const payment=data.payment ?? 'Naqd';
     const sale=checkout(draft,cart,actor,payment);
     const op=operation(draft,actor,'sale',`${sale.id} · kelishilgan narxda sotuv`,at);
     Object.assign(sale,{at:timestamp(at),date:localDate(at),time:new Date(at).toLocaleTimeString('en-GB',{timeZone:ZONE,hour:'2-digit',minute:'2-digit'}),operationId:op,ledger:true,account:data.account,received:data.received,note:String(data.note||'').trim(),exception});
@@ -102,7 +107,7 @@ export function returnSale(state, id, actor, account, note, at=new Date()) {
     const collected=(sale.received??saleTotal(sale))+(debt?.payments.filter(p=>!p.voidedBy).reduce((sum,p)=>sum+p.amount,0)||0);
     // Old receipts are converted to ledger entries before marking them returned.
     if(!sale.ledger) {
-      movement(draft,{kind:'sale-payment',account:sale.payment==='Naqd'?'till1':'bank',amount:saleTotal(sale),reference:id,note:'Avvalgi chek to‘lovi'},sale.seller,new Date(eventTime(sale)),uid());
+      movement(draft,{kind:'sale-payment',account:CASH_ACCOUNT,amount:saleTotal(sale),reference:id,note:'Avvalgi chek to‘lovi'},sale.seller,new Date(eventTime(sale)),uid());
       sale.ledger=true;
     }
     refund(draft,id,actor);
@@ -115,7 +120,7 @@ export function returnSale(state, id, actor, account, note, at=new Date()) {
   });
 }
 
-export const FLOW_KINDS = [['expense','Xarajat'],['income','Qo‘shimcha daromad'],['contribution','Shaxsiy pul qo‘shish'],['withdrawal','Boshliqqa pul topshirish'],['transfer','Kassalar / bank orasida o‘tkazish'],['reimbursement','Xodimga qarzni qaytarish']];
+export const FLOW_KINDS = [['expense','Xarajat'],['income','Qo‘shimcha daromad'],['contribution','Shaxsiy pul qo‘shish'],['withdrawal','Boshliqqa pul topshirish'],['reimbursement','Xodimga qarzni qaytarish']];
 export function staffPayable(state, actor) {
   if(actor==='aziz')return 0;
   const effect=m=>(m.actor===actor&&m.account==='personal'&&['expense','rent-payment'].includes(m.kind)||m.actor===actor&&m.kind==='contribution')?m.amount:m.person===actor&&m.kind==='reimbursement'?-m.amount:0;
@@ -130,7 +135,6 @@ export function recordFlow(state, data, actor, at=new Date()) {
   actorOK(actor);amountOK(data.amount);noteOK(data.note);
   if(!FLOW_KINDS.some(([id])=>id===data.kind))throw Error('Pul harakati turini tanlang.');
   if(data.kind==='expense'&&data.account==='personal'){}else accountOK(data.account);
-  if(data.kind==='transfer'){accountOK(data.to);if(data.account===data.to)throw Error('Pul manbasi va qabul qiluvchi bir xil bo‘lmasin.');}
   if(data.kind==='reimbursement') {
     if(!USERS.some(u=>u.id===data.person&&u.id!=='aziz')||data.amount>staffPayable(state,data.person))throw Error('To‘lov xodim oldidagi qarzdan oshmasin.');
   }
@@ -138,11 +142,10 @@ export function recordFlow(state, data, actor, at=new Date()) {
   return atomic(state,draft=>{
     const op=operation(draft,actor,data.kind,data.note,at);
     const payload={kind:data.kind,amount:data.amount,account:data.account,note:data.note.trim()};
-    if(data.kind==='transfer')payload.to=data.to;
     if(data.kind==='reimbursement')payload.person=data.person;
     if(data.kind==='expense')payload.category=data.category||'Boshqa';
     const entry=movement(draft,payload,actor,at,op);
-    if(data.kind==='expense')draft.expenses.push({...entry,owner:'aziz',payment:data.account==='bank'?'Karta':data.account==='personal'?'Shaxsiy pul':'Naqd',ledger:true,category:data.category||'Boshqa'});
+    if(data.kind==='expense')draft.expenses.push({...entry,owner:'aziz',payment:data.account==='personal'?'Shaxsiy pul':'Naqd',ledger:true,category:data.category||'Boshqa'});
     notify(draft,actor,`${FLOW_KINDS.find(([id])=>id===data.kind)[1]}: ${data.amount} so‘m. ${data.note}`,at);
     return entry;
   });
@@ -150,19 +153,25 @@ export function recordFlow(state, data, actor, at=new Date()) {
 
 export function accountBalances(state) {
   prepareState(state);
-  const sums={...state.settings.openingAccounts};
-  for(const sale of state.sales.filter(s=>!s.ledger&&!s.returned))sums[sale.payment==='Naqd'?'till1':'bank']+=saleTotal(sale);
-  for(const entry of [...state.expenses,...state.purchases,...state.payouts].filter(e=>!e.ledger))sums[entry.account||(entry.payment==='Naqd'?'till1':'bank')]-=entry.amount??entry.qty*entry.cost;
-  function apply(m,sign=1) {
-    if(['sale-payment','debt-payment','income','contribution'].includes(m.kind))sums[m.account]+=sign*m.amount;
-    if(['expense','withdrawal','reimbursement','refund','rent-payment','transfer'].includes(m.kind)&&m.account!=='personal')sums[m.account]-=sign*m.amount;
-    if(m.kind==='transfer')sums[m.to]+=sign*m.amount;
+  let balance = state.settings.openingAccounts[CASH_ACCOUNT];
+  for(const sale of state.sales.filter(s=>!s.ledger&&!s.returned))balance+=saleTotal(sale);
+  for(const entry of [...state.expenses,...state.purchases,...state.payouts].filter(e=>!e.ledger)) {
+    if(entry.account!=='personal'&&entry.payment!=='Shaxsiy pul')balance-=entry.amount??entry.qty*entry.cost;
   }
-  for(const m of state.movements) {
-    if(m.kind!=='reversal')apply(m);
-    else {const original=state.movements.find(x=>x.id===m.reversalOf);if(original)apply(original,-1);}
+  // Transfers between the former cash and bank accounts net to zero in the combined balance.
+  function apply(entry, sign=1) {
+    if(entry.account==='personal')return;
+    if(['sale-payment','debt-payment','income','contribution'].includes(entry.kind))balance+=sign*entry.amount;
+    if(['expense','withdrawal','reimbursement','refund','rent-payment'].includes(entry.kind))balance-=sign*entry.amount;
   }
-  return sums;
+  for(const entry of state.movements) {
+    if(entry.kind!=='reversal')apply(entry);
+    else {
+      const original=state.movements.find(m=>m.id===entry.reversalOf);
+      if(original)apply(original,-1);
+    }
+  }
+  return {[CASH_ACCOUNT]:balance};
 }
 export function setRent(state, month, amount, note, actor, at=new Date()) {
   bossOnly(actor);amountOK(amount,true);noteOK(note);
@@ -189,7 +198,7 @@ export function setOpeningBalances(state, accounts, payables, actor, note, at=ne
   for(const [id] of ACCOUNTS)amountOK(accounts[id],true);
   for(const id of ['jasur','sardor'])amountOK(payables[id],true);
   prepareState(state);
-  state.settings.openingAccounts={...accounts};state.settings.openingPayables={...payables};
+  state.settings.openingAccounts={[CASH_ACCOUNT]:accounts[CASH_ACCOUNT]};state.settings.openingPayables={...payables};
   operation(state,actor,'opening-balances',`Boshlang‘ich pul va xodim qarzlari: ${note}`,at);
 }
 export function addOpeningDebt(state, data, actor, at=new Date()) {
@@ -200,25 +209,25 @@ export function addOpeningDebt(state, data, actor, at=new Date()) {
   state.debts.push(entry);operation(state,actor,'opening-debt',`${entry.customer}: avvaldan qolgan ${data.amount} so‘m qarz kiritildi`,at);return entry;
 }
 export function closeDay(state, data, actor, at=new Date()) {
-  bossOnly(actor);amountOK(data.till1,true);amountOK(data.till2,true);noteOK(data.note);
-  const allocated=data.float1!==undefined||data.float2!==undefined;
-  let float=data.float;
-  if(allocated){amountOK(data.float1,true);amountOK(data.float2,true);float=data.float1+data.float2;
-    if(data.float1>data.till1||data.float2>data.till2)throw Error('Har kassada qoladigan qaytim o‘sha kassada sanalgan puldan oshmasin.');}
+  bossOnly(actor);
+  const {actual,float,handover,note}=data;
+  amountOK(actual,true);
   amountOK(float,true);
-  const actual=data.till1+data.till2;
-  if(float>actual)throw Error('Qaytim puli sanalgan kassadan oshmasin.');
-  if(data.handover&&!allocated)throw Error('Pul topshirishda ikkala kassaga qoladigan qaytimni alohida yozing.');
+  noteOK(note);
+  if(float>actual)throw Error('Qaytim puli kassadagi sanalgan summadan oshmasin.');
   return atomic(state,draft=>{
-    const balances=accountBalances(draft),expected=balances.till1+balances.till2;
-    const entry={id:uid(),at:timestamp(at),date:localDate(at),actor,...data,float,expected,actual,difference:actual-expected,
-      expectedAccounts:{till1:balances.till1,till2:balances.till2},withdrawalIds:[]};
-    // A count discrepancy stays visible. It never becomes invented income/expense.
-    const op=operation(draft,actor,'closing',`Kassa sanaldi. Farq: ${entry.difference} so‘m. ${data.note}`,at);
-    entry.operationId=op;draft.closings.push(entry);
-    if(data.handover)for(const account of ['till1','till2']) {
-      const amount=data[account]-data[account==='till1'?'float1':'float2'];
-      if(amount)entry.withdrawalIds.push(movement(draft,{kind:'withdrawal',account,amount,reference:entry.id,note:'Kun yakuni: boshliqqa topshirildi. '+data.note},actor,at,op).id);
+    const expected=accountBalances(draft)[CASH_ACCOUNT];
+    const entry={
+      id:uid(),at:timestamp(at),date:localDate(at),actor,
+      actual,float,handover,note,expected,difference:actual-expected,withdrawalIds:[],
+    };
+    const op=operation(draft,actor,'closing',`Kassa sanaldi. Farq: ${entry.difference} so‘m. ${note}`,at);
+    entry.operationId=op;
+    draft.closings.push(entry);
+    const amount=actual-float;
+    if(handover&&amount) {
+      const withdrawal=movement(draft,{kind:'withdrawal',account:CASH_ACCOUNT,amount,reference:entry.id,note:'Kun yakuni: boshliqqa topshirildi. '+note},actor,at,op);
+      entry.withdrawalIds.push(withdrawal.id);
     }
     return entry;
   });

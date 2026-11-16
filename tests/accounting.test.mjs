@@ -1,6 +1,7 @@
+import {makeSeed} from './fixtures.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {TODAY,makeSeed,stock,cost,checkout,refund,purchase,metrics,saleTotal,expectedCash} from '../src/model.js';
+import {TODAY,stock,cost,checkout,refund,purchase,metrics,saleTotal,expectedCash} from '../src/model.js';
 const fresh=()=>{const s=makeSeed();s.sales=[];s.expenses=[];s.audit=[];return s};
 test('mixed-owner sale attributes ownership, stock and revenue separately',()=>{const s=fresh(),a=s.products[0],b=s.products[2],aq=stock(a),bq=stock(b);const sale=checkout(s,[{productId:a.id,qty:2,price:a.price},{productId:b.id,qty:1,price:b.price}],'sardor','Naqd');assert.equal(stock(a),aq-2);assert.equal(stock(b),bq-1);assert.equal(saleTotal(sale),225000);assert.equal(metrics(s,{owner:'aziz'}).gross,100000);assert.equal(metrics(s,{owner:'sardor'}).gross,33000);assert.equal(metrics(s).net,133000);assert.equal(expectedCash(s),s.settings.openingCash+225000)});
 test('invalid or oversold cart leaves every product unchanged',()=>{for(const invalid of [999,0,-2,1.5]){const s=fresh(),before=JSON.stringify(s);assert.throws(()=>checkout(s,[{productId:'p0',qty:1,price:85000},{productId:'p1',qty:invalid,price:65000}],'aziz','Naqd'));assert.equal(JSON.stringify(s),before)}});

@@ -1,5 +1,5 @@
 import {OWNERS,USERS} from './model.js';
-import {ACCOUNTS,prepareState,accountBalances,staffPayable} from './business.js';
+import {ACCOUNTS,LEGACY_CASH_ACCOUNTS,prepareState,accountBalances,staffPayable} from './business.js';
 import {catalog} from './admin.js';
 import {DEFAULT_PEOPLE,PERMISSIONS} from './access.js';
 
@@ -8,7 +8,7 @@ const rootArrays=['products','sales','expenses','purchases','payouts','closings'
 const optionalArrays=['movements','debts','rents','notices','operations','defects'];
 const movementKinds=['expense','income','contribution','withdrawal','transfer','reimbursement','debt-payment','rent-payment','sale-payment','refund','reversal'];
 const ownerIDs=new Set(OWNERS.map(o=>o.id)),userIDs=new Set(USERS.map(u=>u.id));
-const accountIDs=new Set(ACCOUNTS.map(([id])=>id));
+const accountIDs=new Set([...ACCOUNTS.map(([id])=>id),...LEGACY_CASH_ACCOUNTS]);
 const fail=label=>{throw Error('Zaxira faylida '+label+' noto‘g‘ri yoki yetishmaydi. Asosiy ma’lumotlar o‘zgarmadi.');};
 function object(value,label){if(!value||typeof value!=='object'||Array.isArray(value))fail(label);}
 function text(value,label,max=500){if(typeof value!=='string'||!value.trim()||value.length>max)fail(label);}
@@ -50,7 +50,9 @@ export function readBackup(raw) {
   for(const key of rootArrays)uniqueIDs(state[key],key);
   for(const key of optionalArrays){if(state[key]===undefined)state[key]=[];uniqueIDs(state[key],key);}
   if(state.settings.openingCash!==undefined)integer(state.settings.openingCash,'boshlang‘ich naqd');
-  if(state.settings.openingAccounts!==undefined){object(state.settings.openingAccounts,'boshlang‘ich hisoblar');for(const [id] of ACCOUNTS)integer(state.settings.openingAccounts[id],'boshlang‘ich '+id);}
+  if(state.settings.openingAccounts!==undefined){object(state.settings.openingAccounts,'boshlang‘ich hisoblar');const opening=state.settings.openingAccounts;
+    const ids=Object.hasOwn(opening,ACCOUNTS[0][0])?ACCOUNTS.map(([id])=>id):LEGACY_CASH_ACCOUNTS;
+    for(const id of ids)integer(opening[id],'boshlang‘ich '+id);}
   if(state.settings.openingPayables!==undefined){object(state.settings.openingPayables,'xodimga boshlang‘ich qarz');for(const [id,value] of Object.entries(state.settings.openingPayables)){actor(id,'boshlang‘ich qarz');integer(value,'xodimga boshlang‘ich qarz');}}
   const products=new Map(state.products.map(p=>[p.id,p]));
   for(const p of state.products) {

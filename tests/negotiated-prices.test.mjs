@@ -1,6 +1,7 @@
+import {makeSeed} from './fixtures.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { makeSeed, checkout, refund, metrics, stock, inventoryValue, saleDiscount } from '../src/model.js';
+import {  checkout, refund, metrics, stock, inventoryValue, saleDiscount } from '../src/model.js';
 import { productsByCode, filterCatalog } from '../src/catalog.js';
 
 function fresh() {

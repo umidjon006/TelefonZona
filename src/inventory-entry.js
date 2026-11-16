@@ -1,6 +1,6 @@
 import {requirePermission} from './access.js';
 import {catalog} from './admin.js';
-import { OWNERS, uid, purchase, log } from './model.js';
+import { CASH_ACCOUNT, OWNERS, uid, purchase, log } from './model.js';
 import { normalizeSearch, qualityName } from './catalog.js';
 import { AUDIENCES } from './business.js';
 
@@ -14,13 +14,13 @@ export function registerProduct(state,data,actor){
   const name=String(data.name||'').trim(),variant=String(data.variant||'').trim(),note=String(data.note||'').trim(),config=catalog(state);
   if(!name||name.length>60||!variant||variant.length>90||!note||note.length>500||!OWNERS.some(o=>o.id===data.owner)
     ||!config.categories.includes(data.category)||!config.brands.some(b=>b.id===data.brand)||data.quality&&!config.qualities.some(q=>q.id===data.quality)
-    ||!['till1','till2','bank'].includes(data.account)||!validInteger(data.qty,100000)||!validInteger(data.cost,1e9)||!validInteger(data.price,1e9)
+    ||data.account!==CASH_ACCOUNT||!validInteger(data.qty,100000)||!validInteger(data.cost,1e9)||!validInteger(data.price,1e9)
     ||!Number.isSafeInteger(data.minPrice)||data.minPrice<0||data.minPrice>data.price||!Number.isSafeInteger(data.min)||data.min<0||data.min>100000)throw Error('Mahsulot, egasi, tanlangan tur va narxlarni tekshiring.');
   const draft=structuredClone(state);let suffix=1001+draft.products.length;
   while(draft.products.some(p=>p.sku==='TZ-'+suffix))suffix++;
   const product={id:uid(),sku:'TZ-'+suffix,name,variant,brand:data.brand,category:data.category,quality:data.quality||'',qualityLabel:qualityName(data.quality,state),
     owner:data.owner,price:data.price,minPrice:data.minPrice,min:data.min,lots:[]};
-  draft.products.push(product);purchase(draft,product.id,data.qty,data.cost,data.account==='bank'?'Karta':'Naqd',actor);
+  draft.products.push(product);purchase(draft,product.id,data.qty,data.cost,'Naqd',actor);
   Object.assign(draft.purchases.at(-1),{account:data.account,note});
   Object.assign(state,{products:draft.products,purchases:draft.purchases,audit:draft.audit});return product;
 }
@@ -87,7 +87,7 @@ export function registerCaseGroups(state, data, actor) {
     }
     purchase(draft,product.id,row.qty,row.cost,data.payment,actor);
     if(data.account) {
-      if(!['till1','till2','bank'].includes(data.account))throw Error('Pul hisobini tanlang.');
+      if(data.account!==CASH_ACCOUNT)throw Error('Pul hisobini tanlang.');
       draft.purchases.at(-1).account=data.account;
     }
     result.push({id:product.id,quality:row.quality,qty:row.qty});

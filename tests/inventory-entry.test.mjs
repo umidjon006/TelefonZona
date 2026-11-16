@@ -1,6 +1,7 @@
+import {makeSeed} from './fixtures.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { makeSeed, purchase, stock, checkout } from '../src/model.js';
+import {  purchase, stock, checkout } from '../src/model.js';
 import { registerCaseGroups, setCatalogPrice } from '../src/inventory-entry.js';
 import { filterCatalog } from '../src/catalog.js';
 
