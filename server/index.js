@@ -34,6 +34,7 @@ server.on('error',error=>{
 server.listen(config.port,config.host,()=>{
   console.log(`TelefonZona server: http://${config.host==='0.0.0.0'?'localhost':config.host}:${config.port}`);
   console.log(`Ma’lumotlar bazasi: ${config.dbFile}`);
+  if(config.publicUrl)console.log(`Claude connector manzili: ${config.publicUrl}/mcp (docs/MCP.md)`);
   if(missing.length)console.log(`Parol o‘rnatilmagan: ${missing.map(p=>p.id).join(', ')}. Buyruq: npm run server:passwd -- <id>`);
   if(config.host!=='127.0.0.1'&&config.host!=='localhost'&&!config.secureCookies)console.log('Ogohlantirish: HTTPS yo‘q. Ochiq internetga chiqarishdan oldin HTTPS va TZ_COOKIE_SECURE=1 kerak.');
 });

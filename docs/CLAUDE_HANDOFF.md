@@ -721,6 +721,7 @@ chiqarish uchun allowlistni umumiy qilib yubormang.
 | Qarz eslatmasi Otabekka va xodimlarga (SMS siz) | **Bor** (bosh sahifa va qo‘ng‘iroq belgisi, ikkala rejimda) |
 | Ikki qurilma offline navbati va sinxronlash | **Yo‘q** |
 | Serverda duplicate/conflict yechimi | **Yo‘q** |
+| Claude connector (MCP, faqat o‘qish) | **Bor** (`server/mcp.js`, `server/oauth.js`), haqiqiy claude.ai bilan sinalmagan, ommaviy HTTPS manzil kerak |
 | Telefon push/SMS, fon scheduler | **Yo‘q**. SMS kerak emas (qaror), eslatma ilova ichida |
 | Native mobil ilova | **Yo‘q** (do‘kon do‘konlari uchun) |
 | PWA (Android/iOS o‘rnatish) | Manifest, ikonkalar, meta teglar bor; HTTPS serverda sinalmagan |

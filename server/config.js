@@ -19,6 +19,8 @@ export function loadConfig(env=process.env){
     port,
     // Serve the build output instead of the sources when TZ_STATIC=dist.
     staticDir:env.TZ_STATIC==='dist'?path.join(ROOT,'dist'):ROOT,
+    // Public https address of this server (needed for Claude connectors). No trailing slash.
+    publicUrl:/^https?:\/\/[^\s/]+$/.test(String(env.TZ_PUBLIC_URL||'').replace(/\/+$/,''))?String(env.TZ_PUBLIC_URL).replace(/\/+$/,''):'',
     secureCookies:env.TZ_COOKIE_SECURE==='1',
     trustProxy:env.TZ_TRUST_PROXY==='1',
     allowedOrigins:String(env.TZ_ALLOWED_ORIGINS||'').split(',').map(x=>x.trim()).filter(Boolean),

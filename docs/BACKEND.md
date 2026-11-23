@@ -70,6 +70,7 @@ Foydali buyruqlar: `npm run server:people` (kimda parol bor), `npm run server:ba
 | `TZ_COOKIE_SECURE` | 0 | HTTPS orqasida `1` qiling |
 | `TZ_TRUST_PROXY` | 0 | Reverse proxy ortida `1` (IP va `X-Forwarded-Proto` uchun) |
 | `TZ_ALLOWED_ORIGINS` | bo‘sh | Boshqa origin (masalan, o‘rnatilgan ilova) uchun vergul bilan |
+| `TZ_PUBLIC_URL` | bo‘sh | Serverning ommaviy `https://` manzili (Claude connector uchun, [MCP.md](MCP.md)) |
 
 ## Xavfsizlik
 
@@ -142,6 +143,20 @@ topshirgan mahsulot qulflanadi. Ekranda: Kirim topshiriqlari bo‘limi (Otabek t
 qayta tayinlaydi, bekor qiladi; xodim qatordagi «Qabul qilish» ni bosadi; yangi mahsulot
 uchun mavjud mahsulot va g‘ilof guruhlari formasi topshiriqqa bog‘lanadi), «Kim nimani kiritgan»
 ro‘yxati va bosh sahifadagi eslatmalar.
+
+## Telefonda sinash
+
+**APK shart emas.** Ilova o‘rnatiladigan veb-ilova (PWA): Android Chrome’da «O‘rnatish»,
+iPhone Safari’da «Bosh ekranga». APK/App Store faqat do‘konlarga chiqarish uchun kerak (keyinroq).
+
+| Usul | Nima ishlaydi | Cheklov |
+| --- | --- | --- |
+| 1. Bir Wi-Fi: `HOST=0.0.0.0 npm run server`, telefonda `http://<laptop IP>:4180` | Sahifa to‘liq ishlaydi (kirish, sotuv, topshiriqlar) | **O‘rnatib bo‘lmaydi** va offlayn keshi yo‘q: o‘rnatish uchun HTTPS shart. Laptop xavfsizlik devori 4180 ni ochishi kerak. Faqat ishonchli tarmoqda |
+| 2. HTTPS tunnel (Cloudflare Tunnel, ngrok) laptopga | PWA o‘rnatiladi, Claude connector ham ulanadi | Trafik uchinchi tomon orqali o‘tadi va kirish sahifasi internetga ochiladi: faqat **sinov ma’lumoti** bilan, kuchli parollar bilan. Ishga tushirish: `TZ_PUBLIC_URL=https://… TZ_COOKIE_SECURE=1 TZ_TRUST_PROXY=1 npm run server` |
+| 3. Haqiqiy hosting + HTTPS | Hammasi | Keyingi bosqich |
+
+Telefonda tekshiring: kirish, bosh ekranga qo‘shish, internetni o‘chirib ochish («Server bilan aloqa yo‘q»
+chiqishi kerak), sotuv, qarz eslatmasi, boshqa qurilmada o‘zgarish.
 
 ## Android va iOS
 

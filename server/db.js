@@ -28,6 +28,30 @@ CREATE TABLE IF NOT EXISTS sessions(
   user_agent TEXT NOT NULL DEFAULT ''
 );
 CREATE INDEX IF NOT EXISTS sessions_person ON sessions(person_id);
+-- Claude connectors (OAuth 2.1 + PKCE). Only hashes of codes and tokens are stored.
+CREATE TABLE IF NOT EXISTS oauth_clients(
+  client_id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  redirect_uris TEXT NOT NULL,
+  created_at INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS oauth_codes(
+  code_hash TEXT PRIMARY KEY,
+  client_id TEXT NOT NULL,
+  person_id TEXT NOT NULL,
+  redirect_uri TEXT NOT NULL,
+  challenge TEXT NOT NULL,
+  expires_at INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS oauth_tokens(
+  token_hash TEXT PRIMARY KEY,
+  kind TEXT NOT NULL,
+  client_id TEXT NOT NULL,
+  person_id TEXT NOT NULL,
+  family TEXT NOT NULL,
+  expires_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS oauth_tokens_person ON oauth_tokens(person_id);
 -- Idempotency: a retried command (bad network, double tap) is answered, never applied twice.
 CREATE TABLE IF NOT EXISTS operations(
   op_id TEXT PRIMARY KEY,

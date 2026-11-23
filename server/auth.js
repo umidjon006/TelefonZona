@@ -53,6 +53,8 @@ export class Auth{
       this.db.prepare(`INSERT INTO accounts(person_id,password_hash,failed,locked_until,created_at,updated_at) VALUES(?,?,0,0,?,?)
         ON CONFLICT(person_id) DO UPDATE SET password_hash=excluded.password_hash,failed=0,locked_until=0,updated_at=excluded.updated_at`).run(personId,hash,stamp,stamp);
       this.db.prepare('DELETE FROM sessions WHERE person_id=?').run(personId);
+      // A new password also disconnects every Claude connector that person authorised.
+      this.db.prepare('DELETE FROM oauth_tokens WHERE person_id=?').run(personId);
     });
   }
 
@@ -72,7 +74,8 @@ export class Auth{
     if(entry.count>IP_MAX)throw new AuthError('Juda ko‘p urinish. Birozdan keyin qayta urinib ko‘ring.',429);
   }
 
-  async login(personId,password,{ip='',userAgent=''}={}){
+  // Verifies a password (with lockout and rate limits) without opening a session.
+  async checkCredentials(personId,password,{ip=''}={}){
     this.limitIp(ip);
     const row=DEFAULT_PEOPLE.some(p=>p.id===personId)?this.db.prepare('SELECT * FROM accounts WHERE person_id=?').get(personId):null;
     if(row&&row.locked_until>this.now()){
@@ -91,6 +94,11 @@ export class Auth{
     }
     this.db.prepare('UPDATE accounts SET failed=0,locked_until=0 WHERE person_id=?').run(personId);
     this.attempts.delete(ip);
+    return true;
+  }
+
+  async login(personId,password,{ip='',userAgent=''}={}){
+    await this.checkCredentials(personId,password,{ip});
     return this.createSession(personId,userAgent);
   }
 
@@ -117,5 +125,8 @@ export class Auth{
   }
 
   logout(token){if(typeof token==='string')this.db.prepare('DELETE FROM sessions WHERE token_hash=?').run(digest(token));}
-  revokeAll(personId){this.db.prepare('DELETE FROM sessions WHERE person_id=?').run(personId);}
+  revokeAll(personId){
+    this.db.prepare('DELETE FROM sessions WHERE person_id=?').run(personId);
+    this.db.prepare('DELETE FROM oauth_tokens WHERE person_id=?').run(personId);
+  }
 }
