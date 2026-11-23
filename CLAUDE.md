@@ -25,6 +25,9 @@ ettirish tartibi bor. Hujjat 2026-11-23 holatiga tayyorlangan.
   ([docs/MCP.md](docs/MCP.md)). Yozish faqat ikki bosqichda: `prepare_*` (nusxada sinab, aniq natija) va
   tasdiqdan keyin `commit_change`. Yangi yozish vositasi shu qolipga amal qilsin (qat’iy raqamlar, noma’lum
   maydon rad etiladi, hammasi-yoki-hech narsa, hisob o‘zgarsa yozilmaydi) va testlarsiz qo‘shilmasin.
+  Foydalanuvchi qarori: Claude do‘konni deyarli to‘liq boshqaradi (kirim, sotuv, tuzatish, bekor qilish,
+  mahsulot, tasnif, ruxsat, sozlama) va katta summalarga ilova tasdig‘i talab qilinmaydi. Parol, sessiya,
+  ulanishlarni boshqarish va zaxira yuklab olish Claude’ga berilmaydi.
 - Ishlayotgan frontendni foydalanuvchining yangi topshirig‘isiz boshqa frameworkda
   boshidan yozmang. Hozir oddiy JavaScript ES modules, CSS, Node.js 22+, tashqi
   paketlarga bog‘liqliksiz ishlaydi.

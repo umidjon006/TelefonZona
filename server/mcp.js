@@ -11,6 +11,7 @@ import {remindersFor} from '../src/reminders.js';
 import {entriesByWorker,intakeRemaining} from '../src/intake.js';
 import {ToolError,asNumber,asEnum,asText,asBool,label,context,adminOnly} from './mcp-shared.js';
 import {isWriteTool,writeListing,runWriteTool} from './mcp-write.js';
+import {RECORD_TOOLS} from './mcp-records.js';
 
 export {ToolError};
 export const SERVER_INFO={name:'telefonzona',title:'TelefonZona',version:'1.0.0'};
@@ -63,19 +64,21 @@ const TOOLS=[
       query:{type:'string',description:'Model, name or SKU, e.g. "S23U" or "iPhone 15 Pro"'},
       owner:{type:'string',description:'Owner id or name (aziz/Otabek, sardor/Boybek, jasur/Asilbek)'},
       low_stock_only:{type:'boolean'},
+      include_archived:{type:'boolean',description:'Also list products removed from the catalog'},
       limit:{type:'integer',minimum:1,maximum:50,description:'Default 20'},
     },additionalProperties:false},
     run(ctx,args){
       const query=asText(args.query,'query'),limit=asNumber(args.limit,'limit',{min:1,max:50,def:20}),low=asBool(args.low_stock_only,'low_stock_only');
       const owner=asText(args.owner,'owner')?ctx.personId(args.owner):null;
       if(args.owner&&!owner)throw new ToolError('Egasi topilmadi.');
-      let list=ctx.data.products.filter(p=>!p.archivedAt);
+      const withArchived=asBool(args.include_archived,'include_archived');
+      let list=ctx.data.products.filter(p=>withArchived||!p.archivedAt);
       if(query)list=list.filter(p=>matchesProduct(p,query));
       if(owner)list=list.filter(p=>p.owner===owner);
       if(low)list=list.filter(isLowStock);
       const total=list.length;
       return {total_found:total,shown:Math.min(total,limit),products:list.slice(0,limit).map(p=>{
-        const units=stock(p),row={sku:p.sku,name:label(p),owner:ctx.nameOf(p.owner),in_stock:units,low_stock:isLowStock(p),price_min:p.minPrice??p.price,price_max:p.price};
+        const units=stock(p),row={sku:p.sku,name:label(p),owner:ctx.nameOf(p.owner),in_stock:units,low_stock:isLowStock(p),price_min:p.minPrice??p.price,price_max:p.price,...(p.archivedAt?{archived:true}:{})};
         if(ctx.mayCost&&units&&p.lots.every(l=>Number.isFinite(l.cost)))row.avg_unit_cost=Math.round(p.lots.reduce((s,l)=>s+l.qty*l.cost,0)/units);
         return row;
       })};
@@ -134,7 +137,7 @@ const TOOLS=[
         const debt=ctx.data.debts.find(d=>d.saleId===s.id),row={
           receipt:s.id,date:s.date,time:s.time,seller:ctx.nameOf(s.seller),payment:s.payment,
           status:s.returned?'returned':debt?.balance?'on_credit':'paid',total:saleTotal(s),paid_at_sale:s.received??saleTotal(s),debt_left:debt?.balance||0,
-          items:s.items.map(i=>({product:label(i),owner:ctx.nameOf(i.owner),qty:i.qty,unit_price:i.price})),
+          items:s.items.map(i=>({sku:i.sku,product:label(i),owner:ctx.nameOf(i.owner),qty:i.qty,unit_price:i.price})),
         };
         if(ctx.admin){row.cost_of_goods=s.items.reduce((sum,i)=>sum+i.cost,0);row.gross_profit=saleProfit(s);}
         return row;
@@ -149,7 +152,7 @@ const TOOLS=[
       const status=asEnum(args.status,'status',['open','done','cancelled','all'],'open');
       const rows=ctx.data.intakes.filter(i=>status==='all'||i.status===status).slice().reverse().slice(0,30);
       return {tasks:rows.map(i=>({code:i.code,status:i.status,assigned_to:ctx.nameOf(i.worker),given_by:ctx.nameOf(i.createdBy),created:i.at,note:i.note||undefined,units_still_expected:intakeRemaining(i),
-        lines:i.lines.map(l=>({what:l.label,expected:l.qty,received:l.doneQty}))}))};
+        lines:i.lines.map((l,n)=>({line:n+1,what:l.label,expected:l.qty,received:l.doneQty}))}))};
     },
   },
   {
@@ -196,6 +199,7 @@ const TOOLS=[
   },
 ];
 
+TOOLS.push(...RECORD_TOOLS);
 export const TOOL_NAMES=TOOLS.map(t=>t.name);
 const listing=TOOLS.map(({name,title,description,inputSchema})=>({name,title,description,inputSchema,annotations:{title,readOnlyHint:true,destructiveHint:false,idempotentHint:true,openWorldHint:false}}));
 

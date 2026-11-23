@@ -9,7 +9,48 @@ export const group=n=>String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g,' ')
 export const som=n=>`${group(n)} so‘m`;
 export const productLabel=p=>[p.model||p.name,AUDIENCES.find(([v])=>v===p.audience)?.[1],p.material,p.qualityLabel,p.grouped?null:p.variant].filter(Boolean).join(' · ');
 
-const unitCost=p=>{const units=stock(p);return units&&p.lots.every(l=>Number.isFinite(l.cost))?Math.round(p.lots.reduce((s,l)=>s+l.qty*l.cost,0)/units):null;};
+const same=(a,b)=>JSON.stringify(a??null)===JSON.stringify(b??null);
+
+// Changes to records that already existed (not new records): which field of which record, from what to what.
+function computeEdits(before,after){
+  const edits=[];
+  const track=(record,oldObj,newObj,fields)=>{for(const field of fields)if(!same(oldObj[field],newObj[field]))edits.push({record,field,from:oldObj[field]??null,to:newObj[field]??null});};
+  const flag=(record,field,was,now)=>{if(!!was!==!!now)edits.push({record,field,from:!!was,to:!!now});};
+  const pair=(list,key='id')=>{const old=new Map(before[list].map(x=>[x[key],x]));return after[list].filter(x=>old.has(x[key])).map(x=>[old.get(x[key]),x]);};
+  for(const [o,p] of pair('products')){
+    const record=`mahsulot ${p.sku}`;
+    track(record,o,p,['name','variant','brand','category','quality','owner','min','model','audience','material']);
+    flag(record,'katalogdan olib tashlangan',o.archivedAt,p.archivedAt);
+  }
+  for(const [o,d] of pair('debts')){
+    const record=`qarz ${d.customer}`;
+    track(record,o,d,['customer','phone','due','note','original']);flag(record,'bekor qilingan',o.cancelledAt,d.cancelledAt);
+  }
+  for(const [o,x] of pair('purchases')){
+    const record=`tovar kirimi ${x.date}`;
+    track(record,o,x,['qty','cost','note']);flag(record,'bekor qilingan',o.deletedAt,x.deletedAt);
+  }
+  for(const [o,x] of pair('defects'))flag(`yaroqsiz tovar yozuvi (${x.qty} dona)`,'bekor qilingan',o.cancelledAt,x.cancelledAt);
+  for(const [o,x] of pair('services'))flag(`xizmat ${x.title}`,'bekor qilingan',o.cancelledAt,x.cancelledAt);
+  for(const [o,x] of pair('rents'))flag(`ijara ${x.month}`,'bekor qilingan',o.cancelledAt,x.cancelledAt);
+  for(const [o,x] of pair('closings'))flag(`kassa sanog‘i ${x.date}`,'bekor qilingan',o.cancelledAt,x.cancelledAt);
+  for(const [o,i] of pair('intakes')){const record=`kirim topshirig‘i ${i.code}`;track(record,o,i,['status','worker']);}
+  const a=before.settings,b=after.settings;
+  track('do‘kon sozlamasi',a,b,['shop','caseCategory']);
+  if(!same(a.openingAccounts,b.openingAccounts))edits.push({record:'boshlang‘ich qoldiq',field:'kassa',from:a.openingAccounts?.cash??0,to:b.openingAccounts?.cash??0});
+  for(const id of ['jasur','sardor'])if((a.openingPayables?.[id]??0)!==(b.openingPayables?.[id]??0))edits.push({record:'boshlang‘ich qoldiq',field:`xodimga qarz ${id}`,from:a.openingPayables?.[id]??0,to:b.openingPayables?.[id]??0});
+  for(const person of b.people||[]){
+    const was=(a.people||[]).find(p=>p.id===person.id);
+    if(was&&was.name!==person.name)edits.push({record:`xodim ${person.id}`,field:'ism',from:was.name,to:person.name});
+    for(const [permission,value] of Object.entries(b.permissions?.[person.id]||{}))
+      if((a.permissions?.[person.id]?.[permission])!==value)edits.push({record:`xodim ${person.id}`,field:`ruxsat ${permission}`,from:a.permissions?.[person.id]?.[permission]??null,to:value});
+  }
+  for(const kind of ['categories','materials','qualities','brands']){
+    const names=list=>(list||[]).filter(x=>!x.archived).map(x=>typeof x==='string'?x:`${x.id}=${x.name}`).sort();
+    if(!same(names(a.catalog?.[kind]),names(b.catalog?.[kind])))edits.push({record:`tasnif ${kind}`,field:'ro‘yxat',from:names(a.catalog?.[kind]),to:names(b.catalog?.[kind])});
+  }
+  return edits;
+}
 
 export function computeEffects(before,after,{admin}){
   const cash=accountBalances(structuredClone(after))[CASH_ACCOUNT]-accountBalances(structuredClone(before))[CASH_ACCOUNT];
@@ -44,8 +85,11 @@ export function computeEffects(before,after,{admin}){
   const rents=after.rents.filter(r=>{const o=oldRents.get(r.id);return !o||o.amount!==r.amount||o.paid!==r.paid;})
     .map(r=>({month:r.month,agreed:[oldRents.get(r.id)?.amount??0,r.amount],paid:[oldRents.get(r.id)?.paid??0,r.paid]}));
   const intakes=fresh('intakes').map(i=>({code:i.code,worker:i.worker,lines:i.lines.map(l=>({what:l.label,qty:l.qty}))}));
+  const wasVoided=new Set(before.movements.filter(m=>m.voidedBy).map(m=>m.id));
+  const voided=after.movements.filter(m=>m.voidedBy&&!wasVoided.has(m.id)).map(m=>({kind:m.kind,amount:m.amount,note:m.note}));
   return {
-    stock:stockChanges,price_changes:priceChanges,cash_delta:cash,sales,returned_sales:returned,movements,debts,services,closings,defects,rents,intakes,
+    stock:stockChanges,price_changes:priceChanges,cash_delta:cash,sales,returned_sales:returned,movements,voided_movements:voided,debts,services,closings,defects,rents,intakes,
+    edits:computeEdits(before,after),
     gross_profit_delta:sales.reduce((s,x)=>s+x.gross_profit,0)-returned.reduce((s,x)=>s+x.gross_profit,0),
   };
 }
@@ -67,6 +111,8 @@ export function digestOf(e){
     sales:e.sales.map(s=>[s.total,s.received,s.payment,s.cost_of_goods,s.items.map(i=>[i.sku,i.qty,i.unit_price])]),
     returned:e.returned_sales.map(s=>[s.receipt,s.total,s.gross_profit]).sort(compare),
     movements:e.movements.map(m=>[m.kind,m.amount,m.account]).sort(compare),
+    voided:e.voided_movements.map(m=>[m.kind,m.amount]).sort(compare),
+    edits:e.edits.map(x=>[x.record,x.field,x.from,x.to]).sort(compare),
     debts:e.debts.map(d=>[d.customer,d.delta]).sort(compare),
     services:e.services.map(s=>[s.title,s.worker,s.profit]),
     closings:e.closings.map(c=>[c.counted,c.left_for_tomorrow,c.handed_over]),
@@ -89,6 +135,9 @@ export function describe(e,nameOf,admin=false){
   for(const p of e.price_changes)lines.push(`Narx oralig‘i ${p.sku}: ${group(p.min[0])}–${group(p.max[0])} → ${group(p.min[1])}–${group(p.max[1])} so‘m`);
   for(const s of e.sales)lines.push(`Chek: jami ${som(s.total)}, hozir olinadi ${som(s.received)}${s.on_credit?`, nasiya ${som(s.on_credit)}`:''} (${s.payment})`);
   for(const s of e.returned_sales)lines.push(`Chek ${s.receipt} to‘liq qaytariladi: ${som(s.total)}`);
+  const show=value=>value===true?'ha':value===false?'yo‘q':Array.isArray(value)?value.join(', '):value===null||value===undefined||value===''?'—':typeof value==='number'?group(value):String(value);
+  for(const x of e.edits)lines.push(`Tahrir: ${x.record} · ${x.field}: ${show(x.from)} → ${show(x.to)}`);
+  for(const m of e.voided_movements)lines.push(`Bekor qilinadi: ${m.kind} ${som(m.amount)} · ${m.note}`);
   for(const d of e.debts)lines.push(d.is_new?`Yangi qarz: ${d.customer} ${som(d.after)}`:`Qarz ${d.customer}: ${som(d.before)} → ${som(d.after)}`);
   for(const m of e.movements.filter(x=>!['sale-payment','debt-payment','refund','reversal'].includes(x.kind)))lines.push(`Pul harakati: ${m.kind} ${som(m.amount)} · ${m.note}`);
   for(const s of e.services)lines.push(`Xizmat foydasi: ${s.title} · ${nameOf(s.worker)} · ${som(s.profit)}`);

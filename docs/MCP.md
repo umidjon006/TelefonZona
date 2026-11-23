@@ -27,7 +27,10 @@ huquqlaridan oshmaydi: Boybek ulasa, Claude ham faqat Boybek ekranida mumkin bo�
 | `list_debts` | qarz ruxsati borlar | Ochiq qarzlar (`debt_id` bilan), telefon, muddat |
 | `get_reminders` | hamma | Bugungi qarz eslatmalari, kirim topshiriqlari |
 | `list_sales` | Otabek: hammasi + foyda; xodim: o‘ziniki | Cheklar |
-| `list_receipt_tasks`, `who_entered_what` | Otabek: hammasi; xodim: o‘zi | Kirim topshiriqlari, kim nimani kiritgani |
+| `list_receipt_tasks`, `who_entered_what` | Otabek: hammasi; xodim: o‘zi | Kirim topshiriqlari (qator raqami bilan), kim nimani kiritgani |
+| `get_product`, `get_sale` | hamma (o‘z doirasida) | Bitta mahsulot yoki chekning to‘liq tafsiloti (tuzatishdan oldin) |
+| `list_cash_movements`, `list_stock_receipts`, `list_services`, `list_defects` | Otabek: hammasi; xodim: o‘zi | Yozuvlar **id** bilan (tuzatish yoki bekor qilish uchun aniq yozuvni ko‘rsatish) |
+| `list_rents`, `list_day_closings`, `get_staff_settings` | faqat Otabek | Ijara, kun yakunlari (id bilan), xodimlar ruxsatlari va boshlang‘ich qoldiq |
 | `get_cash_position`, `staff_performance` | faqat Otabek | Kassa, qarz, ijara, xodimlar natijasi |
 
 ## Yozish: har doim ikki bosqich
@@ -51,6 +54,26 @@ huquqlaridan oshmaydi: Boybek ulasa, Claude ham faqat Boybek ekranida mumkin bo�
 | `prepare_rent`, `prepare_rent_payment` | Ijara belgilash (Otabek), ijara to‘lash |
 | `prepare_day_close` | Kun yakuni sanog‘i (Otabek) |
 | `prepare_receipt_task` | Xodimga kirim topshirish (Otabek) |
+| `prepare_receipt_task_receive` | Topshiriq qatori bo‘yicha tovar qabul qilish (mavjud yoki yangi mahsulot) |
+| `prepare_receipt_task_change` | Topshiriqni boshqa xodimga berish yoki bekor qilish (Otabek) |
+
+**Tuzatish va boshqaruv** (yozuv o‘chmaydi: eskisi bekor qilinadi, tarix saqlanadi):
+
+| Vosita | Nima qiladi |
+| --- | --- |
+| `prepare_sale_correction` | Chekni tuzatish (eskisi qaytariladi, to‘g‘risi yoziladi; olingan pul avtomatik o‘tadi) |
+| `prepare_cash_correction`, `prepare_cash_reversal` | Pul yozuvini tuzatish yoki bekor qilish |
+| `prepare_debt_edit` | Qarzdor ismi, telefoni, muddati, izohi (va avvalgi qarz summasi) |
+| `prepare_opening_debt`, `prepare_opening_debt_removal` | Avvaldan qolgan qarzni qo‘shish yoki olib tashlash (Otabek) |
+| `prepare_product_edit`, `prepare_product_archive` | Mahsulotni tahrirlash; katalogdan olib tashlash va tiklash (Otabek) |
+| `prepare_purchase_correction`, `prepare_purchase_removal` | Tovar kirimini tuzatish yoki bekor qilish (Otabek) |
+| `prepare_defect_correction`, `prepare_defect_removal` | Yaroqsiz tovar yozuvini tuzatish yoki bekor qilish (Otabek) |
+| `prepare_service_correction`, `prepare_service_removal` | Xizmat yozuvini tuzatish yoki bekor qilish |
+| `prepare_rent_removal` | Oy ijarasini bekor qilish (Otabek) |
+| `prepare_closing_correction`, `prepare_closing_removal` | Kun yakunini tuzatish yoki bekor qilish (Otabek) |
+| `prepare_opening_balances` | Boshlang‘ich kassa va xodimga qarz (Otabek) |
+| `prepare_catalog_change` | Tur, g‘ilof turi, sifat, brendni qo‘shish, nomini o‘zgartirish, olib tashlash (Otabek) |
+| `prepare_staff_settings`, `prepare_shop_settings` | Xodim ismi va ruxsatlari, do‘kon va boshliq nomi (Otabek) |
 
 ### Aniqlik uchun kafolatlar (testlar bilan tekshirilgan)
 
@@ -79,9 +102,9 @@ huquqlaridan oshmaydi: Boybek ulasa, Claude ham faqat Boybek ekranida mumkin bo�
 
 ### Ataylab qo‘shilmaganlari
 
-Mavjud yozuvni **tahrirlash yoki o‘chirish** (ilova ichida sabab bilan qilinadi), ruxsatlarni o‘zgartirish,
-parollar, do‘kon sozlamalari, boshlang‘ich qoldiqlar, mahsulotni katalogdan olib tashlash, tasniflar va zaxira.
-Bular xato bo‘lsa ziyoni katta, shuning uchun faqat ilovada, inson tasdig‘i bilan qoladi.
+Parollar, sessiyalar, Claude ulanishlarini boshqarish va zaxira nusxani yuklab olish. Bular suhbat orqali
+o‘tib ketadigan sirlar yoki butun do‘kon ma’lumotini chiqarish bo‘lardi; faqat ilovada, inson qo‘li bilan qoladi.
+Yozuv **o‘chirilmaydi**: bekor qilingan yozuv tarixda qoladi (do‘kon hisobi qoidasi).
 
 ## Xavfsizlik
 
@@ -105,8 +128,9 @@ Bular xato bo‘lsa ziyoni katta, shuning uchun faqat ilovada, inson tasdig‘i 
 qiladi, lekin Claude buni foydalanuvchi so‘ramasdan o‘zi yuborib yubora olmasligini server **bila olmaydi**.
 Himoya: (1) Claude’ning o‘zi har bir yozuv vositasi chaqiruvida ruxsat so‘raydi. **«Always allow»
 (doim ruxsat) ni TelefonZona yozish vositalari uchun yoqmang**; (2) har yozuv tarixda «Claude orqali»
-bo‘lib ko‘rinadi; (3) xato yozuv ilovada sabab bilan tuzatiladi. Agar bundan qat’iyroq kerak bo‘lsa
-(masalan, summa chegarasidan oshgan yozuv Otabek tasdig‘ini ilovada kutsin), buni alohida kelishib qo‘shamiz.
+bo‘lib ko‘rinadi; (3) xato yozuv Claude orqali ham, ilovada ham sabab bilan tuzatiladi. **Qaror (2026-11-23):**
+katta summalar uchun ilovada alohida tasdiq ataylab qo‘shilmadi; Claude hamma summalar bilan ishlaydi.
+Bu qarorni o‘zgartirish kerak bo‘lsa, chegarani Umidjon belgilaydi.
 
 ## Ulash (muhim shart: ommaviy HTTPS manzil)
 
@@ -132,6 +156,6 @@ Birinchi marta yozishni **sinov ma’lumoti** bilan (yoki kichik, tekshirib bo�
   bilan sinab bo‘lmadi. Birinchi ulanishda kichik moslash kerak bo‘lishi mumkin.
 - Claude’ning o‘zi noto‘g‘ri mahsulotni tanlashi yoki foydalanuvchi aytmagan narsani tushunishi mumkin:
   shuning uchun natija har doim ko‘rsatiladi va tasdiqlanadi. Server faqat aniq SKU/id va to‘g‘ri raqamlarni qabul qiladi.
-- Mavjud yozuvni tahrirlash/o‘chirish vositalari yo‘q (yuqoriga qarang).
+- Vositalar soni ko‘p (taxminan 50). Claude kerakli birini o‘zi tanlaydi; noaniq bo‘lsa so‘rashi kerak.
 - Ilovada «Claude takliflari» alohida ro‘yxati yo‘q; natija faqat tarixda va bazada.
 - `TZ_PUBLIC_URL` o‘rnatilmasa manzil so‘rovdan olinadi (faqat sinash uchun); real joylashda majburiy deb hisoblang.

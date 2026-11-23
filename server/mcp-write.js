@@ -14,6 +14,7 @@ import {normalizeSearch} from '../src/catalog.js';
 import {runCommand,CommandError} from '../src/commands.js';
 import {computeEffects,digestOf,describe,publicEffects,som,group} from './effects.js';
 import {ToolError,exactInt,exactText,exactEnum,adminOnly,context,rejectUnknown} from './mcp-shared.js';
+import {buildManageTools} from './mcp-manage.js';
 
 const TTL_MS=15*60*1000,HOURLY_LIMIT=60,PAYMENTS=['Naqd','Karta','O‘tkazma'];
 const EXPENSE_CATEGORIES=['Boshqa','Transport','Elektr','Internet','Soliq','Maosh','Ta’mirlash'];
@@ -270,18 +271,20 @@ const WRITE_TOOLS=[
    description:'Boss only. Prepare a receipt task: incoming goods the worker must enter. Nobody else can enter goods already handed to a worker.',
    schema:()=>obj(['worker','lines'],{worker:{type:'string',description:'Person id or name'},note:NOTE,lines:{type:'array',minItems:1,maxItems:50,items:obj(['what','qty'],{what:{type:'string',maxLength:120},qty:{type:INT,minimum:1,maximum:100000},sku:SKU})}})},
 ];
+// Corrections and administration live in their own file and get the same helpers.
+const ALL_TOOLS=[...WRITE_TOOLS,...buildManageTools({findSku,object,priceRange,newProductSpec,money,obj,NOTE,SKU,INT,PAYMENTS})];
 const COMMIT_TOOL={
   name:'commit_change',title:'Apply a prepared change',
   description:'Apply a change returned by a prepare_* tool. Call it ONLY after you showed the preview to the user and they clearly agreed in this conversation. Never on your own. The change is applied all together or not at all, and only if its effects are still exactly what was previewed.',
   inputSchema:obj(['proposal_id','user_confirmed'],{proposal_id:{type:'string'},user_confirmed:{type:'boolean',description:'true only if the user explicitly agreed to the previewed change'}}),
 };
 
-export const WRITE_TOOL_NAMES=[...WRITE_TOOLS.map(t=>t.name),COMMIT_TOOL.name];
+export const WRITE_TOOL_NAMES=[...ALL_TOOLS.map(t=>t.name),COMMIT_TOOL.name];
 export const isWriteTool=name=>WRITE_TOOL_NAMES.includes(name);
 export function writeListing(state){
   const annotation=(title,extra)=>({title,readOnlyHint:false,openWorldHint:false,...extra});
   return [
-    ...WRITE_TOOLS.map(t=>({name:t.name,title:t.title,description:t.description,inputSchema:t.schema(state),annotations:annotation(t.title,{destructiveHint:false,idempotentHint:false})})),
+    ...ALL_TOOLS.map(t=>({name:t.name,title:t.title,description:t.description,inputSchema:t.schema(state),annotations:annotation(t.title,{destructiveHint:false,idempotentHint:false})})),
     {name:COMMIT_TOOL.name,title:COMMIT_TOOL.title,description:COMMIT_TOOL.description,inputSchema:COMMIT_TOOL.inputSchema,annotations:annotation(COMMIT_TOOL.title,{destructiveHint:true,idempotentHint:true})},
   ];
 }
@@ -357,5 +360,5 @@ function commit(store,ctx,args){
 export function runWriteTool(store,actor,name,args){
   const ctx=context(store,actor);
   if(name===COMMIT_TOOL.name)return commit(store,ctx,args);
-  return prepare(store,ctx,WRITE_TOOLS.find(t=>t.name===name),args);
+  return prepare(store,ctx,ALL_TOOLS.find(t=>t.name===name),args);
 }
