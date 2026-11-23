@@ -6,6 +6,12 @@ export const OWNERS=USERS.map((person,index)=>({...person,short:person.initials[
 export const CATEGORIES=['G‘iloflar','Quvvatlagichlar','Kabellar','Quloqchinlar','Himoya oynalari','Aqlli soatlar','Soat aksessuarlari','Avto aksessuarlar'];
 export const uid=()=>globalThis.crypto?.randomUUID?.()||Math.random().toString(36).slice(2);
 export function stock(p){return p.lots.reduce((a,l)=>a+l.qty,0)}
+export function stockLimit(product) {
+  return Number.isSafeInteger(product.min) && product.min >= 0 ? product.min : 5;
+}
+export function isLowStock(product) {
+  return stock(product) <= stockLimit(product);
+}
 export function cost(p){const s=stock(p);return s?Math.round(p.lots.reduce((a,l)=>a+l.qty*l.cost,0)/s):(p.lots.at(-1)?.cost||0)}
 export const CASH_ACCOUNT = 'cash';
 

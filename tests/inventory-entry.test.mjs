@@ -1,8 +1,8 @@
 import {makeSeed} from './fixtures.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {  purchase, stock, checkout } from '../src/model.js';
-import { registerCaseGroups, setCatalogPrice } from '../src/inventory-entry.js';
+import { purchase, stock, checkout, isLowStock } from '../src/model.js';
+import { registerCaseGroups, setCatalogPrice, setLowStockLimit } from '../src/inventory-entry.js';
 import { filterCatalog } from '../src/catalog.js';
 
 const entry=(owner='aziz')=>({brand:'samsung',model:'S25U',owner,payment:'Naqd',rows:[
@@ -11,6 +11,41 @@ const entry=(owner='aziz')=>({brand:'samsung',model:'S25U',owner,payment:'Naqd',
   {quality:'pro',qty:6,cost:25000,price:45000},
   {quality:'premium',qty:3,cost:45000,price:80000},
 ]});
+
+test('custom group threshold warns at the boundary and disappears after restocking',()=>{
+  const state=makeSeed();
+  const input={...entry(),min:3,rows:[{quality:'budget',qty:5,cost:4000,price:10000}]};
+  const [group]=registerCaseGroups(state,input,'aziz');
+  const product=state.products.find(item=>item.id===group.id);
+  assert.equal(product.min,3);
+  assert.equal(isLowStock(product),false);
+  checkout(state,[{productId:product.id,qty:2,price:10000}],'sardor','Naqd');
+  assert.equal(stock(product),3);
+  assert.equal(isLowStock(product),true);
+  assert.ok(filterCatalog(state.products,{category:'low'}).some(item=>item.id===product.id));
+  purchase(state,product.id,2,4000,'Naqd','aziz');
+  assert.equal(isLowStock(product),false);
+  setLowStockLimit(state,product.id,0,'aziz');
+  checkout(state,[{productId:product.id,qty:5,price:10000}],'sardor','Naqd');
+  assert.equal(isLowStock(product),true);
+});
+
+test('group receipt keeps its chosen threshold and invalid changes are atomic',()=>{
+  const state=makeSeed();
+  const [group]=registerCaseGroups(state,{...entry(),min:10},'aziz');
+  registerCaseGroups(state,{...entry(),min:5},'aziz');
+  assert.equal(state.products.find(item=>item.id===group.id).min,10);
+  const before=JSON.stringify(state);
+  for(const min of [-1,1.5,NaN,100001]){
+    assert.throws(()=>registerCaseGroups(state,{...entry(),min},'aziz'));
+    assert.throws(()=>setLowStockLimit(state,group.id,min,'aziz'));
+  }
+  assert.throws(()=>setLowStockLimit(state,group.id,2,'sardor'));
+  assert.throws(()=>setLowStockLimit(state,'missing',2,'aziz'));
+  assert.equal(JSON.stringify(state),before);
+  setLowStockLimit(state,group.id,2,'aziz');
+  assert.equal(state.products.find(item=>item.id===group.id).min,2);
+});
 
 test('both sellers cannot change catalog price, add stock or create groups, even for their own goods',()=>{
   for(const actor of ['sardor','jasur']) {

@@ -1,5 +1,26 @@
 /* Phone layout shares the desktop data, forms and permission checks. */
 .mobile-brand,.mobile-bottom-nav,.mobile-cart-summary,.mobile-profile-name{display:none}
+.low-stock-summary{display:flex;flex-wrap:wrap;gap:14px 24px;margin:0 0 20px;padding:16px 20px;border:1px solid var(--line);border-radius:14px;background:var(--panel);color:var(--ink);font-size:16px;line-height:1.7}
+.low-stock-summary b{color:var(--warning);font-size:22px;margin-right:5px}
+.low-stock-owner{display:flex;flex-direction:column;gap:6px;font-size:14px;color:var(--muted);min-width:170px}
+.low-stock-owner select{padding:10px 12px;border:1px solid var(--line);border-radius:9px;font-size:16px;min-height:44px}
+.low-stock-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;padding:4px 20px 20px}
+.low-stock-list>.empty{grid-column:1/-1}
+.low-stock-card{padding:20px;border:1px solid var(--line);border-radius:14px;background:var(--surface);min-width:0}
+.low-stock-card-title{display:flex;gap:12px;align-items:flex-start}
+.low-stock-card-title>div{min-width:0}
+.low-stock-card-title h2{font-size:18px;line-height:1.5;overflow-wrap:anywhere}
+.low-stock-card-title p{font-size:14px;line-height:1.7;color:var(--muted);margin-top:6px;overflow-wrap:anywhere}
+.low-stock-card .product-thumb{flex-shrink:0;width:42px;height:42px;background:var(--panel)}
+.low-stock-quantities{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:20px 0}
+.low-stock-quantities>span{display:flex;flex-direction:column;gap:6px}
+.low-stock-quantities small{font-size:14px;color:var(--muted);font-weight:400}
+.low-stock-quantities b{font-size:28px;color:var(--ink)}
+.low-stock-quantities .low-stock-remaining b{color:var(--warning)}
+.low-stock-actions{display:flex;flex-wrap:wrap;gap:9px}
+.low-stock-actions .btn{flex:1 1 135px;min-height:46px;font-size:14px;padding:10px 12px}
+@media(max-width:1000px){.low-stock-list{grid-template-columns:1fr}}
+@media(max-width:767px){.low-stock-summary{padding:15px 16px;gap:9px 20px}.low-stock-list{padding:0 14px 16px;gap:12px}.low-stock-card{padding:16px}.low-stock-owner{width:100%}.low-stock-card-title h2{font-size:18px}.low-stock-card .product-thumb{display:none}.low-stock-actions .btn{font-size:14px}.low-stock-summary>span{font-size:16px}}
 .mobile-section-grid{display:grid;gap:8px;margin-top:14px}
 .mobile-section-link{display:flex;align-items:center;gap:13px;width:100%;min-height:52px;padding:12px 15px;border:1px solid var(--line);border-radius:11px;background:var(--surface);color:var(--ink);text-align:left}
 .mobile-section-link>span{flex:1}

@@ -1,3 +1,5 @@
+import {isLowStock} from './model.js';
+
 export const QUALITY_TIERS = [
   { id:'budget', name:'Arzon' },
   { id:'standard', name:'O‘rta' },
@@ -151,7 +153,7 @@ export function filterCatalog(products, { brand = 'all', series = 'all', query =
     const identity = productIdentity(product);
     return (brand === 'all' || identity.brand === brand)
       && (brand === 'all' || series === 'all' || identity.series === series)
-      && (category === 'all' || category === 'low' && product.lots.reduce((sum, lot) => sum + lot.qty, 0) <= product.min || product.category === category)
+      && (category === 'all' || category === 'low' && isLowStock(product) || product.category === category)
       && (quality === 'all' || product.quality === quality)
       && matchesProduct(product, query);
   });

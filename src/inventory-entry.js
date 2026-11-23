@@ -1,6 +1,6 @@
 import {requirePermission} from './access.js';
 import {catalog} from './admin.js';
-import { CASH_ACCOUNT, OWNERS, uid, purchase, log } from './model.js';
+import { CASH_ACCOUNT, OWNERS, uid, purchase, log, stockLimit } from './model.js';
 import { normalizeSearch, qualityName } from './catalog.js';
 import { AUDIENCES } from './business.js';
 
@@ -35,11 +35,25 @@ export function setCatalogPrice(state, productId, price, actor, minPrice=price) 
   log(state,actor,`${product.sku} · tavsiya narxi ${previous} → ${price} so‘m`);
 }
 
+export function setLowStockLimit(state, productId, limit, actor) {
+  requirePermission(state, actor, 'products');
+  const product = state.products.find(item => item.id === productId);
+  if (!product || !Number.isSafeInteger(limit) || limit < 0 || limit > 100000) {
+    throw Error('Eslatma chegarasini 0 dan 100 000 gacha butun son bilan kiriting.');
+  }
+  const previous = stockLimit(product);
+  product.min = limit;
+  log(state, actor, `${product.sku} · kam qoldiq chegarasi ${previous} → ${limit} dona`);
+}
+
 // Each model, quality tier and owner has its own stock group. Designs and colors
 // are pooled only when the shop owner explicitly uses this grouped-entry form.
 export function registerCaseGroups(state, data, actor) {
   requirePermission(state,actor,'products');
   requirePermission(state,actor,'stock');
+  if (data.min !== undefined && (!Number.isSafeInteger(data.min) || data.min < 0 || data.min > 100000)) {
+    throw Error('Eslatma chegarasini 0 dan 100 000 gacha butun son bilan kiriting.');
+  }
   // Blank values keep older grouped stock separate from explicitly classified stock.
   const audience=data.audience||'',material=data.material||'';
   if(audience&&!AUDIENCES.some(([id])=>id===audience)||material&&!catalog(state).materials.includes(material))throw Error('Kim uchun va g‘ilof turini tanlang.');
@@ -80,7 +94,7 @@ export function registerCaseGroups(state, data, actor) {
       while (draft.products.some(item=>item.sku==='TZ-'+suffix)) suffix++;
       product={id:uid(),sku:'TZ-'+suffix,brand:data.brand,model,name:material?material+' g‘ilof':'G‘ilof',quality:row.quality,qualityLabel:qualityName(row.quality,state),audience,material,
         grouped:true,variant:model+' · turli rang va naqshlar',category:'G‘iloflar',owner:data.owner,
-        price:row.price,minPrice:row.minPrice??row.price,min:5,lots:[]};
+        price:row.price,minPrice:row.minPrice??row.price,min:data.min??5,lots:[]};
       draft.products.push(product);
     } else if (product.price !== row.price || product.minPrice !== (row.minPrice??row.price)) {
       setCatalogPrice(draft,product.id,row.price,actor,row.minPrice??row.price);
