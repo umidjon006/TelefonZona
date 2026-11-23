@@ -6,7 +6,7 @@ import {DEFAULT_PEOPLE,people,isAdmin,can} from '../src/access.js';
 import {remindersFor} from '../src/reminders.js';
 import {Auth,AuthError} from './auth.js';
 import {CommandError,assertPlain} from './commands.js';
-import {viewFor} from './view.js';
+import {viewFor,receiptFor} from './view.js';
 import {isFrontendPath,CONTENT_TYPES} from '../scripts/frontend-files.mjs';
 
 const COOKIE='tz_session';
@@ -45,7 +45,7 @@ async function pageSecurity(staticDir){
   try{
     const html=await readFile(path.join(staticDir,'index.html'),'utf8');
     const hashes=[...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map(m=>`'sha256-${createHash('sha256').update(m[1]).digest('base64')}'`);
-    return `default-src 'self'; script-src 'self' ${hashes.join(' ')}; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; manifest-src 'self'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'`;
+    return `default-src 'self'; script-src 'self' ${hashes.join(' ')}; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self'; manifest-src 'self'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'`;
   }catch{return "default-src 'self'";}
 }
 
@@ -125,6 +125,13 @@ export async function createApp({store,auth,config,log=()=>{}}){
       if(since!==null&&Number(since)===store.version())return send(res,200,{unchanged:true,version:store.version()});
       return send(res,200,{...snapshot(actor)});
     }
+    if(req.method==='GET'&&url.pathname.startsWith('/api/receipts/')){
+      let id;try{id=decodeURIComponent(url.pathname.slice('/api/receipts/'.length));}catch{throw new HttpError('Chek raqami noto‘g‘ri.',400);}
+      const {state}=store.read();
+      const sale=receiptFor(state,actor,id.trim().replace(/^#/,'').toUpperCase());
+      if(!sale)throw new HttpError('Bu raqamdagi chek topilmadi.',404);
+      return send(res,200,{sale});
+    }
     if(route==='GET /api/reminders'){
       const {state}=store.read();
       return send(res,200,{reminders:remindersFor(state,actor)});
@@ -165,9 +172,13 @@ export async function createApp({store,auth,config,log=()=>{}}){
     let pathname=url.pathname==='/'?'/index.html':url.pathname;
     if(!isFrontendPath(pathname)){res.writeHead(404,baseHeaders({'Content-Type':'text/plain; charset=utf-8'}));return void res.end('Topilmadi');}
     try{
-      const content=await readFile(path.join(config.staticDir,pathname));
+      let content=await readFile(path.join(config.staticDir,pathname));
       const headers={'Content-Type':CONTENT_TYPES[path.extname(pathname)]||'application/octet-stream'};
-      if(pathname==='/index.html')headers['Content-Security-Policy']=csp;
+      if(pathname==='/index.html'){
+        headers['Content-Security-Policy']=csp;
+        // Tells the app it is served by this server, so it signs in and saves here instead of locally.
+        content=Buffer.from(content.toString('utf8').replace('<head>','<head><meta name="telefonzona-server" content="1">'));
+      }
       res.writeHead(200,baseHeaders(headers));
       res.end(req.method==='HEAD'?undefined:content);
     }catch(error){

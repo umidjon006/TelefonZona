@@ -1,8 +1,9 @@
-# TelefonZona backend (1-bosqich, laptopda sinash uchun)
+# TelefonZona backend va frontend ulanishi (laptopda sinash uchun)
 
-Holat sanasi: 2026-11-23. Bu bosqich **tayyor serverni** beradi, lekin **frontend
-(`src/app.js`) hali unga ulanmagan**: ilova hozircha o‘z `localStorage`ida ishlayapti.
-Ulanish alohida keyingi qadam. Serverga joylashdan oldin shu hujjatdagi
+Holat sanasi: 2026-11-23. Server tayyor va **ilova unga ulangan**: server bergan
+sahifada kirish ekrani, serverda saqlash, bir necha qurilmada bir xil ma’lumot,
+eslatmalar va kirim topshiriqlari ishlaydi. Statik hostingdagi demo (va `npm run dev`)
+esa avvalgidek mahalliy rejimda qoladi. Serverga joylashdan oldin pastdagi
 «Hali yo‘q» bo‘limini o‘qing.
 
 ## Nima uchun shunday qurilgan
@@ -20,6 +21,22 @@ Ulanish alohida keyingi qadam. Serverga joylashdan oldin shu hujjatdagi
   «qoldiq yetarli emas» xatosini oladi. Jim ustiga yozish yo‘q.
 - `opId` (UUID) bilan qayta yuborilgan buyruq ikki marta bajarilmaydi, birinchi
   javob qaytariladi. Internet uzilib qayta urinish uchun tayyorlangan.
+
+## Ikki rejim
+
+| | Server rejimi | Mahalliy rejim |
+| --- | --- | --- |
+| Qachon | Sahifani `npm run server` bergan (unda `<meta name="telefonzona-server">` bor) | Statik hosting, `npm run dev`, demo sayt |
+| Kirish | Xodim + parol, sessiya cookie | Demo rol tanlagichi (login emas) |
+| Ma’lumot | Serverda (SQLite); `telefonzona-v2` kaliti o‘qilmaydi va yozilmaydi | Brauzerda `telefonzona-v2` |
+| Amallar | Hammasi `src/commands.js` buyruqlari orqali serverga | Shu buyruqlar brauzer nusxasida |
+
+Rejim sahifa belgisidan sinovsiz aniqlanadi, shuning uchun server rejimidagi ilova
+internetsiz ochilsa ham jimgina mahalliy rejimga o‘tib ketmaydi (aloqa yo‘q ekrani chiqadi).
+Bir qurilmada kiritilgan yozuv boshqasida 5 soniya ichida ko‘rinadi (so‘rov orqali; ish
+yozuvga tegmaydi: kiritish yoki oyna ochiq bo‘lsa, yangilanish kutadi).
+Internet yo‘q paytda yangi amallar bajarilmaydi (oflayn navbat yo‘q). Forma har bosilganda
+bitta so‘rov ketadi, javob yo‘qolsa qayta yuborish ikki marta yozmaydi (`opId`).
 
 ## Ishga tushirish (laptopda)
 
@@ -120,8 +137,11 @@ kirimni yozadi (mavjud mahsulotga partiya, yangi mahsulot yoki g‘ilof guruhlar
   kirim funksiyalari orqali o‘tadi.
 - Xodim ekranida: o‘z topshiriqlari va shaxsiy xabarlar (`inbox`).
 
-Kelishilmagan: xodim faqat topshirilgan tovarni kirimlashi kerakmi, yoki
-topshiriqsiz ham kirita oladimi. Hozir topshiriqsiz erkin (faqat topshirilgani qulflanadi).
+**Qaror (2026-11-23):** xodim topshiriqsiz ham tovar kirita oladi. Faqat Otabek
+topshirgan mahsulot qulflanadi. Ekranda: Kirim topshiriqlari bo‘limi (Otabek topshiradi,
+qayta tayinlaydi, bekor qiladi; xodim qatordagi «Qabul qilish» ni bosadi; yangi mahsulot
+uchun mavjud mahsulot va g‘ilof guruhlari formasi topshiriqqa bog‘lanadi), «Kim nimani kiritgan»
+ro‘yxati va bosh sahifadagi eslatmalar.
 
 ## Android va iOS
 
@@ -136,9 +156,8 @@ paketsiz `scripts/make-icons.mjs` bilan chiziladi), iOS meta teglari, service wo
 
 ## Hali yo‘q (serverga joylashdan oldin shu qoladi)
 
-1. **Frontend serverga ulanmagan.** `mutate()` `localStorage`ga yozadi. Ulash:
-   kirish ekrani, `mutate` o‘rniga buyruq yuborish, `GET /api/state` bilan yangilash
-   (polling), kirim topshiriqlari va eslatmalar ekranlari. Rol tanlagich olib tashlanadi.
+1. ~~Frontend serverga ulanmagan~~ — ulandi (yuqoriga qarang). Qolgani: haqiqiy telefon va
+   HTTPS orqali sinov; sahifa birinchi marta ochilganda sekin internetda holat.
 2. Eski `localStorage` ma’lumotlarini serverga ko‘chirish yo‘li (agar Otabek brauzerida
    haqiqiy yozuvlar bo‘lsa) kelishilishi kerak. Avtomatik ko‘chirilmaydi.
 3. **HTTPS** serverning o‘zida yo‘q. Joylashda reverse proxy (Caddy/nginx) kerak,
@@ -153,6 +172,12 @@ paketsiz `scripts/make-icons.mjs` bilan chiziladi), iOS meta teglari, service wo
 8. Mustaqil xavfsizlik auditi o‘tkazilmagan; ikki faktorli kirish va qurilmalar ro‘yxati yo‘q.
 
 ## Testlar
+
+Brauzer interfeysi haqiqiy (headless) Chrome orqali qo‘lda ishga tushirilgan senariylar bilan
+ikkala rejimda tekshirilgan: kirish, har bir forma, kirim topshirig‘i, qulf, eslatma,
+boshqa qurilma o‘zgarishining ko‘rinishi, xodim sahifalari va ma’lumot sizmasligi. Bu
+senariylar repoda yo‘q (Chrome va sandboxsiz ishga tushirish kerak); ularni doimiy
+testga aylantirish alohida ish.
 
 `npm test` — 100+ test, ularning ichida haqiqiy HTTP orqali kirish, bloklash,
 ruxsat, ma’lumot yashirinligi, qayta yuborish, kirim qulfi, qarz eslatmasi,

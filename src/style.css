@@ -214,3 +214,40 @@
 @media(max-width:700px){.admin-catalog-grid,.staff-permissions-grid{grid-template-columns:1fr}.admin-overview{padding:18px}.admin-section>h2{font-size:16px}.catalog-option-form,.catalog-tags{padding-left:16px;padding-right:16px}.permission-list{padding:0 16px}.staff-name-field{margin-left:16px;margin-right:16px}.permission-toggle{font-size:11px}.payment-owner-review>div{flex-direction:column;gap:4px}.identity-card{padding:18px}.admin-overview>div>b{line-height:1.8}.admin-section>p{font-size:11px}}
 .staff-permissions-form .permission-toggle{flex-direction:row;margin:0;text-align:left}
 .staff-permissions-form .permission-toggle>span:first-child{flex:1;min-width:0}
+
+/* Sign-in, reminders and receipt tasks. Colors come from the theme variables. */
+.login-screen{min-height:100vh;min-height:100dvh;display:grid;place-items:center;padding:24px 16px calc(24px + env(safe-area-inset-bottom))}
+.login-card{width:min(420px,100%);padding:28px 22px;display:grid;gap:14px;text-align:center;overflow:visible}
+.login-card h1{margin:0;font-size:26px;line-height:1.2}
+.login-card p{margin:0;color:var(--muted)}
+.login-card label{text-align:left;margin-bottom:0}
+.login-mark{justify-self:center;display:inline-grid;place-items:center;width:52px;height:52px;border-radius:15px;background:var(--sidebar);color:var(--lime);font-size:30px;font-weight:700}
+.login-people{display:grid;gap:8px}
+.login-person{position:relative;display:flex!important;flex-direction:row!important;align-items:center;gap:12px!important;padding:10px 14px;margin:0!important;min-height:58px;border:1px solid var(--line);border-radius:14px;cursor:pointer;text-align:left;font-size:15px!important;color:var(--ink)!important}
+.login-person b{font-weight:600}
+.login-person input{position:absolute;opacity:0;width:1px;height:1px;padding:0;border:0}
+.login-person:has(input:checked){border-color:var(--accent,var(--green));box-shadow:0 0 0 2px var(--accent,var(--green))}
+.login-person:has(input:focus-visible){outline:3px solid #9ac781;outline-offset:2px}
+.login-card .btn.full{width:100%;min-height:50px;justify-content:center}
+.login-card input[type=password]{font-size:16px;padding:14px}
+.reminder-row{display:flex;align-items:center;gap:12px;padding:12px 0;border-top:1px solid var(--line);flex-wrap:wrap}
+.reminder-icon{display:grid;place-items:center;width:34px;height:34px;border-radius:50%;background:var(--line);flex:none}
+.reminder-row.overdue .reminder-icon{background:var(--danger-bg,#fbe9e4);color:var(--danger,#b75a40)}
+.reminder-row.today .reminder-icon{background:var(--warning-bg,#f6f0df);color:var(--warning,var(--amber))}
+.reminder-text{flex:1 1 200px;display:grid;gap:2px;min-width:0}
+.reminder-text b{font-size:14px;line-height:1.35}
+.reminder-text small{color:var(--muted)}
+.notification-item.urgent{border-left:3px solid var(--danger,#b75a40)}
+.intake-list{display:grid;gap:16px}
+.intake-card .panel-heading{align-items:flex-start;flex-wrap:wrap;gap:10px}
+.intake-card h2{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.progress{display:block;height:6px;margin-top:6px;border-radius:99px;background:var(--line);overflow:hidden;min-width:70px}
+.progress>i{display:block;height:100%;background:var(--accent,var(--green));border-radius:99px}
+.intake-line{display:grid;grid-template-columns:2fr 1fr 2fr;gap:0 12px}
+.intake-lines-edit{margin-bottom:12px}
+.entry-group{padding:6px 0 12px}
+@media(max-width:700px){.intake-line{grid-template-columns:1fr;border-top:1px dashed var(--line);padding-top:10px;margin-top:6px}}
+.done-count{white-space:nowrap}
+.done-count b{display:inline!important}
+.reminder-row{padding:12px 20px}
+.entry-group{padding:8px 20px 14px}

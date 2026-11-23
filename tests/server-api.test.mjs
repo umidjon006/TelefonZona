@@ -252,7 +252,7 @@ test('only the frontend files are served; code, tests, data and git are not',asy
   const csp=page.headers.get('content-security-policy');
   assert.match(csp,/script-src 'self' 'sha256-/);assert.match(csp,/frame-ancestors 'none'/);
   assert.equal((await c.get('/src/app.js')).status,200);
-  assert.equal((await c.get('/src/intake.js')).status,200);
+  for(const file of ['/src/intake.js','/src/commands.js','/src/api.js','/src/reminders.js'])assert.equal((await c.get(file)).status,200,file);
   assert.equal(page.headers.get('cache-control'),'no-store');
   const manifest=await c.get('/manifest.webmanifest');
   assert.equal(manifest.status,200);
@@ -266,6 +266,38 @@ test('only the frontend files are served; code, tests, data and git are not',asy
     assert.deepEqual([...new Uint8Array(await file.arrayBuffer()).slice(0,4)],[0x89,0x50,0x4e,0x47]);
   }
   assert.equal((await c.get('/icons/../package.json')).status,404);
+}));
+
+test('the page tells the app it is served by this server; static hosting never carries that mark',async()=>withServer(async ctx=>{
+  const page=await ctx.client().get('/');
+  assert.match(page.text,/<head><meta name="telefonzona-server" content="1">/);
+  assert.match(page.headers.get('content-security-policy'),/font-src 'self' https:\/\/fonts\.gstatic\.com/);
+  const {readFileSync}=await import('node:fs');
+  assert.equal(readFileSync(new URL('../index.html',import.meta.url),'utf8').includes('telefonzona-server'),false,'the source page stays mode-neutral');
+}));
+
+test('a seller can look up a colleague’s receipt by number, without cost data',async()=>withServer(async ctx=>{
+  const {boss,boybek,asilbek,product}=await setup(ctx);
+  const made=(await boss.command('sale.record',sale(product,2))).json.result;
+  assert.equal((await ctx.client().get('/api/receipts/'+made.id)).status,401);
+  const found=await boybek.get('/api/receipts/'+encodeURIComponent(made.id.toLowerCase()));
+  assert.equal(found.status,200);
+  assert.equal(found.json.sale.id,made.id);
+  assert.equal('cost' in found.json.sale.items[0],false);
+  assert.equal('alloc' in found.json.sale.items[0],false);
+  assert.equal((await asilbek.get('/api/receipts/S-9999')).status,404);
+  const own=await boss.get('/api/receipts/'+made.id);
+  assert.equal(own.json.sale.items[0].cost,40000,'Otabek still sees cost');
+}));
+
+test('rent paid from a seller’s own pocket is accepted by the server too',async()=>withServer(async ctx=>{
+  const {boss,boybek}=await setup(ctx);
+  const month=new Date().toISOString().slice(0,7);
+  await boss.command('rent.set',{month,amount:500000,note:'Ijara'});
+  const rentId=ctx.store.read().state.rents[0].id;
+  const paid=await boybek.command('rent.pay',{id:rentId,amount:70000,account:'personal',note:'O‘z cho‘ntagimdan'});
+  assert.equal(paid.status,200,paid.text);
+  assert.equal(ctx.store.read().state.rents[0].paid,70000);
 }));
 
 test('Otabek can download a full backup that passes the same checks as a restore file',async()=>withServer(async ctx=>{

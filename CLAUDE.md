@@ -14,10 +14,13 @@ ettirish tartibi bor. Hujjat 2026-11-23 holatiga tayyorlangan.
   to‘lov turlari saqlanadi, amaldagi pul hisobi esa `cash`.
 - Bitta platforma, umumiy ish maydoni va uchta profil mavjud. Boshqaruv va umumiy
   moliyaviy hisobotlar Otabek roliga ajratilgan.
-- Ko‘rinadigan ilova hozir **frontend demo**. Demo rol tanlagichi login emas. Backend
-  birinchi bosqichi `server/`da tayyor (login, sessiya, SQLite, server ruxsatlari,
-  buyruqlar, kirim topshiriqlari, eslatmalar; [docs/BACKEND.md](docs/BACKEND.md)),
-  lekin frontend hali unga ulanmagan. Qurilmalararo sinxronlash, oflayn navbat va push yo‘q.
+- Ilova ikki rejimda ishlaydi ([docs/BACKEND.md](docs/BACKEND.md)). `npm run server`
+  bergan sahifada **server rejimi**: xodim+parol bilan kirish, SQLite, server ruxsatlari,
+  qurilmalararo sinxronlash (so‘rov orqali), eslatmalar, kirim topshiriqlari. Statik
+  hosting va `npm run dev`da **mahalliy demo rejimi** (rol tanlagichi login emas,
+  `telefonzona-v2`). Ikkalasi `src/commands.js` buyruqlarini ishlatadi: yangi amal
+  qo‘shilsa shu yerga qo‘shing, `app.js`da `act()` bilan chaqiring. Oflayn navbat va
+  push yo‘q; server hali joylanmagan (HTTPS, tashqi zaxira kerak).
 - Ishlayotgan frontendni foydalanuvchining yangi topshirig‘isiz boshqa frameworkda
   boshidan yozmang. Hozir oddiy JavaScript ES modules, CSS, Node.js 22+, tashqi
   paketlarga bog‘liqliksiz ishlaydi.

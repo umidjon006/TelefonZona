@@ -714,11 +714,11 @@ chiqarish uchun allowlistni umumiy qilib yubormang.
 | Kun/hafta/oy/yil/umumiy hisob | Bor |
 | JSON backup/restore, CSV eksport | Bor |
 | Offline interfeys va mahalliy saqlash | Bor |
-| Haqiqiy login, parol, session | **Serverda bor** (`server/`), frontend ulanmagan |
+| Haqiqiy login, parol, session | **Bor** server rejimida (`server/`, kirish ekrani) |
 | Backend API va doimiy server bazasi | **Bor** (SQLite), laptopda sinash bosqichi; joylanmagan |
-| Serverdagi role/ownership tekshiruvlari | **Bor** (domen ichida va `server/view.js`); frontend hali ishlatmaydi |
-| Kirim topshiriqlari (boshliq xodimga tovar topshiradi) | Domen va server bor, UI yo‘q |
-| Qarz eslatmasi Otabekka va xodimlarga (SMS siz) | Server bor, UI yo‘q |
+| Serverdagi role/ownership tekshiruvlari | **Bor** (domen ichida va `server/view.js`), server rejimida ishlaydi |
+| Kirim topshiriqlari (boshliq xodimga tovar topshiradi) | **Bor** (ekran: Kirim topshiriqlari, ikkala rejimda) |
+| Qarz eslatmasi Otabekka va xodimlarga (SMS siz) | **Bor** (bosh sahifa va qo‘ng‘iroq belgisi, ikkala rejimda) |
 | Ikki qurilma offline navbati va sinxronlash | **Yo‘q** |
 | Serverda duplicate/conflict yechimi | **Yo‘q** |
 | Telefon push/SMS, fon scheduler | **Yo‘q**. SMS kerak emas (qaror), eslatma ilova ichida |
@@ -936,6 +936,9 @@ joylashni so‘radi. Batafsil: [BACKEND.md](BACKEND.md). Qisqasi:
 - Ikki xodim bir mahsulotni kiritib chalkashtirmasligi uchun boshliq yangi tovarni
   xodimga topshiradi (`intake`), kim nimani kiritgani ko‘rinadi. Topshirilmagan
   tovarni xodim erkin kirita oladimi — **kelishilmagan**, hozir erkin.
-- Server frontend bilan bir xil domen modullarini ishlatadi; frontend hali ulanmagan.
-  Keyingi katta qadam: kirish ekrani, `mutate()` o‘rniga buyruq yuborish, kirim
-  topshiriqlari va eslatmalar ekrani, so‘ng serverga joylash (HTTPS, tashqi zaxira).
+- Server frontend bilan bir xil domen modullarini ishlatadi. Frontend endi ulangan:
+  `app.js` hamma amalni `act()` orqali bajaradi (server rejimida serverga, mahalliy
+  rejimda `src/commands.js` orqali brauzer nusxasiga). Server rejimi sahifadagi
+  `<meta name="telefonzona-server">` bilan aniqlanadi. Qaror: xodim topshiriqsiz ham kirim
+  qila oladi. Keyingi katta qadam: serverga joylash (HTTPS, tashqi zaxira), haqiqiy
+  telefonda sinov.

@@ -57,7 +57,7 @@ export function ensureAccess(state){
 export function canVisit(state,actor,page){
   if(!DEFAULT_PEOPLE.some(p=>p.id===actor))return false;
   if(isAdmin(actor))return true;
-  if(['dashboard','settings','sales'].includes(page))return true;
+  if(['dashboard','settings','sales','intake'].includes(page))return true;
   const gate={pos:'sell',inventory:'inventory',lowstock:'inventory',cash:'cash',debts:'debts',services:'services'}[page];
   return !!gate&&can(state,actor,gate);
 }

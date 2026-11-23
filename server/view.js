@@ -1,5 +1,14 @@
 import {can,isAdmin} from '../src/access.js';
 
+// A single receipt looked up by number (a seller may open a colleague's receipt
+// to answer a customer) never carries cost or the lots it consumed.
+export function receiptFor(state,actor,id){
+  const sale=state.sales.find(s=>s.id===id);
+  if(!sale)return null;
+  if(isAdmin(actor))return sale;
+  return {...sale,items:sale.items.map(({cost,alloc,commission,...item})=>item)};
+}
+
 // What a person's device may receive. Otabek gets everything. A seller gets the
 // shared workplace (products, debts) and only their own receipts, cash entries,
 // services and receipts of goods. Reports, audit, rent, closings and owner-only
