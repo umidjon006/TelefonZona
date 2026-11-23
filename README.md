@@ -3,6 +3,11 @@
 Telefon aksessuarlari do‘koni uchun o‘zbekcha savdo va ombor demosi. Node.js 22+ kerak;
 qo‘shimcha paket o‘rnatilmaydi.
 
+**Claude Code bilan davom ettirish:** avval [CLAUDE.md](CLAUDE.md), keyin
+[to‘liq loyiha konteksti va topshirish hujjatini](docs/CLAUDE_HANDOFF.md) o‘qing.
+Unda foydalanuvchi bilan kelishilgan qoidalar, amaldagi kod, cheklovlar va qolgan
+ishlar 2026-11-23 holatiga yig‘ilgan.
+
 ```sh
 npm run dev
 ```
@@ -20,15 +25,18 @@ interfeysda ular mos ravishda Otabek, Boybek, Asilbek bo‘lib ko‘rinadi. Bu n
 eski mahsulotning egasini yoki miqdorini boshqa kishiga avtomatik o‘tkazmaydi.
 
 **Boshqaruv** bo‘limida Otabek mahsulot turlari, g‘ilof materiallari, sifat guruhlari va brendlarni
-qo‘shadi. To‘rt sifat guruhi bilan cheklanmaydi. Yangi qiymat darhol tegishli shakl va filtrda
-chiqadi; «Boshqa mahsulot» shaklida yangi kategoriya, brend va sifat bilan tovar kiritiladi.
+qo‘shadi, tahrirlaydi va bog‘lanishlarni saqlab olib tashlaydi. To‘rt sifat guruhi bilan
+cheklanmaydi. Yangi qiymat darhol tegishli shakl va filtrda chiqadi; «Boshqa mahsulot»
+shaklida yangi kategoriya, brend va sifat bilan tovar kiritiladi.
 
 Boybek va Asilbekning sotuv, nasiya, narxdan tashqari savdo, qoldiq ko‘rish, mahsulot qo‘shish,
 kirim, narx, kirim-chiqim, qarz, qaytarish, nuqson va o‘z yozuvini tuzatish ruxsatlari alohida
-sozlanadi. Mahsulot qo‘shish yoqilsa, kirim huquqi ham yoqiladi. Standart holatda katalog va
-kirimni faqat Otabek o‘zgartiradi. Umumiy hisobotlar, foyda, xodimlar statistikasi, boshqaruv,
+sozlanadi. Mahsulot qo‘shish yoqilsa, kirim huquqi ham yoqiladi. Yangi hisobda xodimlar
+mahsulot qo‘shishi/tahrirlashi va tovar kiritishi mumkin; mavjud katalog narxini o‘zgartirish
+esa alohida ruxsat va standartda o‘chirilgan. Umumiy hisobotlar, xodimlar statistikasi, boshqaruv,
 zaxira va kun yakuni delegatsiya qilinmaydi — faqat Otabekka tegishli. Sotuvchi o‘z cheklarini
-ko‘radi. Ruxsat tekshiruvi navigatsiyada ham, amal bajaruvchi funksiyalarda ham qo‘llangan.
+va o‘z xizmat foydasini ko‘radi. Ruxsat tekshiruvi navigatsiyada ham, amal bajaruvchi
+funksiyalarda ham qo‘llangan.
 Bu hali frontend namoyishi; haqiqiy login va server tekshiruvlari ulanmaguncha ma’lumotni
 begona foydalanuvchidan himoyalangan deb bo‘lmaydi.
 
@@ -65,7 +73,9 @@ saqlanadi; bitta kassa butun to‘lovni oladi. Yakunlash oynasi egalarni yana ko
 
 ## Ruxsat va hisob qoidalari
 
-Mahsulot yaratish, kirim va narx oralig‘ini standart holatda Otabek boshqaradi; tegishli amallarni xodimga berishi mumkin. Boshlang‘ich qoldiqlar faqat Otabek uchun.
+Otabek mahsulot yaratish, kirim va narx oralig‘i ruxsatlarini boshqaradi. Yangi hisobda
+mahsulot/kirim xodimlarga ochiq, mavjud katalog narxini tahrirlash alohida ruxsat.
+Boshlang‘ich qoldiqlar faqat Otabek uchun.
 Xodimga umumiy foyda hisoboti ko‘rsatilmaydi. Kirim / mahsulot qo‘shish ruxsati berilsa, shu shakllarda tannarx kiritiladi. Boshliq har sotuvchining dona, savdo summasi,
 sotilgan tovar tannarxi va keltirgan yalpi foydasini, shuningdek mahsulot egalari hisobotini ko‘radi.
 Sotuvchi va mahsulot egasi alohida saqlanadi. Uchala ega o‘rtasida pul taqsimlash qoidasi hali
@@ -81,8 +91,9 @@ kelishilmagan; avtomatik ulush yoki hisob-kitob kiritilmagan.
   Almashtirish: avval chekni qaytarish, keyin yangi sotuv. Qisman chek qaytarish hali yo‘q.
 - Nuqson: yaroqsiz tovar FIFO tannarxi bilan bir marta zararga chiqariladi. Tuzatiladigan
   mahsulotning ta’mir xarajati yoziladi; keyin savdoda arzonroq narx sabab bilan qo‘yiladi.
-- Sof natija = savdo − sotilgan tovar tannarxi + qo‘shimcha daromad − kiritilgan xarajatlar −
-  yaroqsiz tovar zarari − tegishli oylik ijara. Kiritilmagan maosh / soliq hisobga olinmaydi.
+- Sof natija = savdo − sotilgan tovar tannarxi + qo‘shimcha daromad + xizmat sof foydasi −
+  kiritilgan xarajatlar − yaroqsiz tovar zarari − tegishli oylik ijara.
+  Kiritilmagan maosh / soliq hisobga olinmaydi.
 
 Hisobot chegaralari **Asia/Tashkent**da: kun 07:00; hafta yakshanba 23:00; oy 1-sana 07:00;
 yil 31-dekabr 23:00. Davr yangilanishi hech qanday yozuvni o‘chirmaydi. Umumiy hisob, ombor,
@@ -90,16 +101,41 @@ pul va qarz qoldiqlari davom etadi. Kunlik / haftalik natijada «ijara ayrilmaga
 
 ## Xato pul yozuvini tuzatish
 
-**Kirim va chiqim → Tafsilot → Xato yozuvni bekor qilish** orqali sabab yoziladi.
+**Kirim va chiqim → Tafsilot → Tahrirlash / O‘chirish** orqali sabab yoziladi.
 Xodim o‘z yozuvini, boshliq esa xodim yozuvini ham bekor qiladi. Asl yozuv tarixda qoladi;
 qarama-qarshi ta’sirli tuzatish hozirgi sanada qayd etiladi. Oldingi kun hisoboti o‘zgarmaydi.
 Keyin kerak bo‘lsa to‘g‘ri summa yoki hisob bilan yangi yozuv kiritiladi.
 
-Xarajat / daromad, o‘tkazma, topshirish, shaxsiy pul, xodimga qaytarish, nasiya to‘lovi va ijara
-to‘lovi tuzatiladi. Pul bilan birga tegishli qarz qoldig‘i ham yangilanadi. Xodimga xarajati
-qaytarib bo‘lingan bo‘lsa, avval o‘sha qaytarilgan to‘lovni tekshirish kerak; unga qarz manfiyga
-aylanmaydi. Sotuvni chek orqali qaytarish kerak. Cheki allaqachon qaytarilgan qarz to‘lovi
-alohida bekor qilinmaydi. Eski namunadagi alohida tovar kirimlari bu usul bilan bekor qilinmaydi.
+Tahrirlash amali eski yozuvni bekor qilib, to‘g‘risini birga saqlaydi. O‘chirishdan
+oldin «O‘chirilsinmi?» oynasida nima o‘zgarishi tushuntiriladi va Ha/Yo‘q so‘raladi.
+Chek, tovar kirimi, qarzdor, ijara, kassa sanog‘i va nuqsonlar uchun ham tegishli
+tuzatish amallari bor. Bog‘langan tarixiy tannarx va to‘lovlarni buzadigan amallar
+bloklanadi; mahsulotni katalogdan olib tashlash esa keyin tiklanadigan arxivdir.
+
+Xarajat / daromad, eski o‘tkazma, topshirish, shaxsiy pul, xodimga qaytarish,
+nasiya to‘lovi va ijara to‘lovi bekor qilinadi. Pul bilan tegishli qarz qoldig‘i
+ham yangilanadi. Xodimga xarajati qaytarib bo‘lingan bo‘lsa, avval o‘sha to‘lovni
+tekshirish kerak; unga qarz manfiyga aylanmaydi. Cheki qaytarilgan qarz to‘lovi
+alohida bekor qilinmaydi. Tovar kirimini esa boshliq «Kirimlar tarixi» orqali,
+sarflangan partiyalar va tarixiy tannarxni saqlash sharti bilan tuzatadi.
+
+## Umumiy ish maydoni va xizmatlar
+
+Bitta platformada umumiy ish maydoni va uchta profil bor. Asosiy sahifada kerakli
+mahsulot/qarzdor ro‘yxatlari hamda tezkor sotuv, kirim va xizmat tugmalari chiqadi.
+Ruxsatli xodim qarzdorning ismi, telefoni va qoldig‘ini ko‘rib, to‘lov oladi.
+
+**Qo‘shimcha xizmatlar**da telefon ta’miri/oldi-sotdisidan hisoblab bo‘lingan sof
+foyda, xizmat nomi, izoh va kim bajargani yoziladi. U umumiy va tegishli xodim
+foydasiga qo‘shiladi; kassaga yana tushum yozmaydi. Shu summani «Qo‘shimcha daromad»ga
+takror kiritmang. Xodim o‘z xizmatlarini, Otabek barchasini boshqaradi.
+
+## Kam qoldiq eslatmasi
+
+Har mahsulot guruhiga alohida chegara belgilanadi: masalan, quvvatlagichga 10,
+aqlli soatga 2. Qoldiq shu songa teng yoki kam bo‘lsa **Kam qoldiqlar**da chiqadi.
+0 — faqat tugaganda; eski belgilanmagan limit uchun 5 qo‘llanadi. Yangi partiya
+qo‘shish ilgari tanlangan chegarani almashtirmaydi. Qoldiq to‘ldirilsa eslatma yo‘qoladi.
 
 ## Zaxiradan tiklash
 
@@ -117,9 +153,9 @@ hisobni o‘zgartirsa, tiklash to‘xtatiladi va qayta solishtirish talab qilina
 
 ## Saqlash va hozirgi cheklovlar
 
-Yangilangan sayt bo‘sh ombor va nol qoldiq bilan boshlanadi. Avvalgi demo yozuvlari
-va brauzerdagi eski tiklash nusxasi yangilangan sahifa ochilganda tozalanadi.
-Keyingi yozuvlar shu brauzerda `telefonzona-v2` kalitida saqlanadi.
+Yangi hisob bo‘sh ombor va nol qoldiq bilan boshlanadi. Eski `telefonzona-v1` demo
+va uning eski tiklash kaliti olib tashlangan. **Amaldagi `telefonzona-v2` yozuvlari
+yangilanishda tozalanmaydi.** Keyingi yozuvlar shu brauzerda saqlanadi.
 
 Sayt bir marta muvaffaqiyatli ochilgach, service worker interfeysni offline ochish uchun
 keshlaydi. Yangi amallarda noyob ID va mahalliy saqlash holati bor. **Serverga yuborish,
@@ -144,6 +180,7 @@ npm run preview
 - `src/admin.js`: boshliq sozlaydigan mahsulot tasniflari va xodim huquqlari.
 - `src/ownership.js`: savatda haqiqiy mahsulot egasi va qoldig‘ini tanlash.
 - `src/business.js`: nasiya, pul harakati, izohli tuzatish, ijara, kassa yakuni va hisobot.
+- `src/management.js`: xizmat foydasi, mahsulot arxivi va bog‘langan yozuvlar CRUDi.
 - `src/backup.js`: zaxira faylini tekshirish, eski formatni moslash va solishtirish raqamlari.
 - `src/model.js`: bo‘sh boshlang‘ich hisob, FIFO sotuv / kirim / qaytarish.
 - `src/inventory-entry.js`: guruhlab kirim va boshliqning narx boshqaruvi.
