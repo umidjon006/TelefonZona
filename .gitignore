@@ -13,3 +13,7 @@ data/private/
 telefon-zona-nusxa*.json
 telefonzona-*.json
 docs/*.png
+*.db
+*.db-wal
+*.db-shm
+*.db-journal

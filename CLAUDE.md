@@ -14,8 +14,10 @@ ettirish tartibi bor. Hujjat 2026-11-23 holatiga tayyorlangan.
   to‘lov turlari saqlanadi, amaldagi pul hisobi esa `cash`.
 - Bitta platforma, umumiy ish maydoni va uchta profil mavjud. Boshqaruv va umumiy
   moliyaviy hisobotlar Otabek roliga ajratilgan.
-- Bu hozir **frontend demo**. Demo rol tanlagichi login emas. Backend, haqiqiy
-  autentifikatsiya, server ruxsatlari, qurilmalararo sinxronlash va push hali yo‘q.
+- Ko‘rinadigan ilova hozir **frontend demo**. Demo rol tanlagichi login emas. Backend
+  birinchi bosqichi `server/`da tayyor (login, sessiya, SQLite, server ruxsatlari,
+  buyruqlar, kirim topshiriqlari, eslatmalar; [docs/BACKEND.md](docs/BACKEND.md)),
+  lekin frontend hali unga ulanmagan. Qurilmalararo sinxronlash, oflayn navbat va push yo‘q.
 - Ishlayotgan frontendni foydalanuvchining yangi topshirig‘isiz boshqa frameworkda
   boshidan yozmang. Hozir oddiy JavaScript ES modules, CSS, Node.js 22+, tashqi
   paketlarga bog‘liqliksiz ishlaydi.
@@ -58,10 +60,13 @@ npm run check
 npm test
 npm run build
 npm run preview
+
+npm run server:passwd -- aziz   # parol o‘rnatish (sardor, jasur ham)
+npm run server                  # http://127.0.0.1:4180, API + sahifa
 ```
 
-Yangi frontend modul qo‘shilsa `scripts/serve.mjs` allowlisti, `sw.js` shell
-ro‘yxati va zarur bo‘lsa `package.json` syntax checklarini ham yangilang.
+Yangi frontend modul qo‘shilsa `scripts/frontend-files.mjs` allowlisti (dev server
+ham, API server ham shundan foydalanadi), `sw.js` shell ro‘yxati va zarur bo‘lsa `package.json` syntax checklarini ham yangilang.
 `src/model.js`dagi eski `metrics`/`expectedCash` emas, yangi UI moliyasi uchun
 `businessReport`/`accountBalances` ishlatiladi. Batafsil farq topshirish hujjatida.
 

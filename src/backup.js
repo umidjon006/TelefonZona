@@ -5,7 +5,7 @@ import {DEFAULT_PEOPLE,PERMISSIONS} from './access.js';
 
 export const MAX_BACKUP_BYTES=8*1024*1024;
 const rootArrays=['products','sales','expenses','purchases','payouts','closings','audit'];
-const optionalArrays=['movements','debts','rents','notices','operations','defects','services'];
+const optionalArrays=['movements','debts','rents','notices','operations','defects','services','intakes','inbox'];
 const movementKinds=['expense','income','contribution','withdrawal','transfer','reimbursement','debt-payment','rent-payment','sale-payment','refund','reversal'];
 const ownerIDs=new Set(OWNERS.map(o=>o.id)),userIDs=new Set(USERS.map(u=>u.id));
 const accountIDs=new Set([...ACCOUNTS.map(([id])=>id),...LEGACY_CASH_ACCOUNTS]);

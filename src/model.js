@@ -1,4 +1,4 @@
-import {DEFAULT_PEOPLE,requirePermission} from './access.js';
+import {DEFAULT_PEOPLE,requirePermission,isAdmin,people} from './access.js';
 export function currentDate(){return new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Tashkent',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());}
 export const TODAY=currentDate();
 export const USERS=DEFAULT_PEOPLE;
@@ -6,6 +6,8 @@ export const OWNERS=USERS.map((person,index)=>({...person,short:person.initials[
 export const CATEGORIES=['G‘iloflar','Quvvatlagichlar','Kabellar','Quloqchinlar','Himoya oynalari','Aqlli soatlar','Soat aksessuarlari','Avto aksessuarlar'];
 export const uid=()=>globalThis.crypto?.randomUUID?.()||Math.random().toString(36).slice(2);
 export function stock(p){return p.lots.reduce((a,l)=>a+l.qty,0)}
+// An open intake line hands the receipt of a product to one worker, so two people never enter the same goods twice.
+export function intakeHolder(s,productId){for(const intake of s.intakes||[])if(intake.status==='open'&&intake.lines.some(l=>l.productId===productId&&l.doneQty<l.qty))return intake;return null;}
 export function stockLimit(product) {
   return Number.isSafeInteger(product.min) && product.min >= 0 ? product.min : 5;
 }
@@ -48,5 +50,5 @@ const sale={operationId:uid(),at:new Date().toISOString(),id:'S-'+(1001+s.sales.
 export function refund(s,id,actor){requirePermission(s,actor,'returns');if(!USERS.some(u=>u.id===actor))throw Error('Sotuvchini tanlang.');const sale=s.sales.find(x=>x.id===id);if(!sale||sale.returned)throw Error('Bu sotuv qaytarilgan yoki topilmadi.');for(const item of sale.items){const p=s.products.find(p=>p.id===item.productId);for(const a of item.alloc){const lot=p.lots.find(l=>l.id===a.lotId);if(lot)lot.qty+=a.qty;else p.lots.push({id:a.lotId,qty:a.qty,cost:a.cost,date:sale.date});}}sale.returned=true;sale.returnDate=currentDate();log(s,actor,`${id} · to‘liq qaytarildi`);}
 export function purchase(s,id,qty,unitCost,payment,actor){
 if(!['Naqd','Karta','O‘tkazma'].includes(payment))throw Error('To‘lov turini tanlang.');
-requirePermission(s,actor,'stock');const p=s.products.find(p=>p.id===id);if(!p)throw Error('Mahsulot topilmadi.');if(!Number.isInteger(qty)||qty<1||!Number.isSafeInteger(unitCost)||unitCost<1)throw Error('Son va tannarx musbat bo‘lishi kerak.');const lotId=uid();p.lots.push({id:lotId,qty,cost:unitCost,date:currentDate()});s.purchases.push({id:uid(),lotId,at:new Date().toISOString(),actor,account:CASH_ACCOUNT,note:`${p.sku} · ${qty} dona tovar kirimi`,productId:id,owner:p.owner,qty,cost:unitCost,date:currentDate(),payment});log(s,actor,`${p.name} · ${qty} dona kirim`);}
+requirePermission(s,actor,'stock');const p=s.products.find(p=>p.id===id);if(!p)throw Error('Mahsulot topilmadi.');const holder=intakeHolder(s,id);if(holder&&holder.worker!==actor&&!isAdmin(actor))throw Error(`Bu mahsulot kirimi ${people(s).find(x=>x.id===holder.worker)?.name||'boshqa xodim'}ga topshirilgan (${holder.code}). Kirimni o‘sha xodim yoki Otabek kiritadi.`);if(!Number.isInteger(qty)||qty<1||!Number.isSafeInteger(unitCost)||unitCost<1)throw Error('Son va tannarx musbat bo‘lishi kerak.');const lotId=uid();p.lots.push({id:lotId,qty,cost:unitCost,date:currentDate()});s.purchases.push({id:uid(),lotId,at:new Date().toISOString(),actor,account:CASH_ACCOUNT,note:`${p.sku} · ${qty} dona tovar kirimi`,productId:id,owner:p.owner,qty,cost:unitCost,date:currentDate(),payment});log(s,actor,`${p.name} · ${qty} dona kirim`);}
 export function expectedCash(s){return s.settings.openingCash+s.sales.filter(x=>!x.returned&&x.payment==='Naqd').reduce((a,x)=>a+saleTotal(x),0)-s.expenses.filter(x=>x.payment==='Naqd').reduce((a,x)=>a+x.amount,0)-s.purchases.filter(x=>x.payment==='Naqd').reduce((a,x)=>a+x.qty*x.cost,0)-s.payouts.filter(x=>x.payment==='Naqd').reduce((a,x)=>a+x.amount,0);}

@@ -567,6 +567,8 @@ dependency yo‘q. Port 4173 bo‘lgani Vite ishlatilgan degani emas.
 | `src/themes.js` / `themes.css` | To‘rt mavzu, persistence, ranglar va harakat |
 | `src/responsive.js` / `responsive.css` | Mobil kartalar, inputmode va adaptiv UI |
 | `src/style.css` | Asosiy kompyuter UI stillari |
+| `src/intake.js`, `src/reminders.js` | Kirim topshiriqlari va xodimlar kesimi; qarz/topshiriq eslatmalari (frontend ham, server ham) |
+| `server/` | Backend: `http.js` API, `auth.js` parol/sessiya, `store.js` tranzaksiya va tekshiruv, `commands.js` buyruqlar, `view.js` xodimga ko‘rinish, `db.js`, `backup.js`, `cli.js` |
 | `sw.js` | Faqat frontend shell uchun offline cache |
 | `scripts/serve.mjs` | Allowlist bilan localhost server, dev va dist preview |
 | `scripts/build.mjs` | `dist/`ni qayta yaratib index, sw va srcni ko‘chiradi |
@@ -712,14 +714,16 @@ chiqarish uchun allowlistni umumiy qilib yubormang.
 | Kun/hafta/oy/yil/umumiy hisob | Bor |
 | JSON backup/restore, CSV eksport | Bor |
 | Offline interfeys va mahalliy saqlash | Bor |
-| Haqiqiy login, parol, session | **Yo‘q** |
-| Backend API va doimiy server bazasi | **Yo‘q** |
-| Serverdagi role/ownership tekshiruvlari | **Yo‘q** |
+| Haqiqiy login, parol, session | **Serverda bor** (`server/`), frontend ulanmagan |
+| Backend API va doimiy server bazasi | **Bor** (SQLite), laptopda sinash bosqichi; joylanmagan |
+| Serverdagi role/ownership tekshiruvlari | **Bor** (domen ichida va `server/view.js`); frontend hali ishlatmaydi |
+| Kirim topshiriqlari (boshliq xodimga tovar topshiradi) | Domen va server bor, UI yo‘q |
+| Qarz eslatmasi Otabekka va xodimlarga (SMS siz) | Server bor, UI yo‘q |
 | Ikki qurilma offline navbati va sinxronlash | **Yo‘q** |
 | Serverda duplicate/conflict yechimi | **Yo‘q** |
-| Telefon push/SMS, fon scheduler | **Yo‘q** |
-| Native mobil ilova | **Yo‘q** |
-| To‘liq PWA install jarayoni | Alohida to‘liq tayyorlangan deb hisoblamang; hozir service worker shell bor |
+| Telefon push/SMS, fon scheduler | **Yo‘q**. SMS kerak emas (qaror), eslatma ilova ichida |
+| Native mobil ilova | **Yo‘q** (do‘kon do‘konlari uchun) |
+| PWA (Android/iOS o‘rnatish) | Manifest, ikonkalar, meta teglar bor; HTTPS serverda sinalmagan |
 | Avtomatik maosh foizi | **Yo‘q, qoida kelishilmagan** |
 | Uch egaga pul/foyda bo‘lish | **Yo‘q, qoida kelishilmagan** |
 | Qisman chek qaytarish | **Yo‘q** |
@@ -920,3 +924,18 @@ Avval tushunganingni, tayyor imkoniyatlarni va asosiy qolgan ishlarni qisqa
 ayt. Hali yangi topshiriq bermagan bo‘lsam o‘zingcha katta refaktor yoki backend
 qurishni boshlama; keyingi topshirig‘im bo‘yicha davom etamiz.
 ```
+
+## 26. Backend bosqichi (2026-11-23)
+
+Foydalanuvchi backendni laptopida tayyorlashni, hammasi 100% bo‘lgach serverga
+joylashni so‘radi. Batafsil: [BACKEND.md](BACKEND.md). Qisqasi:
+
+- Yangi qarorlar: **SMS kerak emas**, eslatma ilovada Otabekka va xodimlarga
+  («bugun shu odam qarzini berishi kerak»). Hamma bitta platformadan foydalanadi; ilova
+  Android va iOS uchun avval PWA sifatida.
+- Ikki xodim bir mahsulotni kiritib chalkashtirmasligi uchun boshliq yangi tovarni
+  xodimga topshiradi (`intake`), kim nimani kiritgani ko‘rinadi. Topshirilmagan
+  tovarni xodim erkin kirita oladimi — **kelishilmagan**, hozir erkin.
+- Server frontend bilan bir xil domen modullarini ishlatadi; frontend hali ulanmagan.
+  Keyingi katta qadam: kirish ekrani, `mutate()` o‘rniga buyruq yuborish, kirim
+  topshiriqlari va eslatmalar ekrani, so‘ng serverga joylash (HTTPS, tashqi zaxira).

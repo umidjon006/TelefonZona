@@ -17,9 +17,12 @@ export function registerProduct(state,data,actor){
     ||data.account!==CASH_ACCOUNT||!validInteger(data.qty,100000)||!validInteger(data.cost,1e9)||!validInteger(data.price,1e9)
     ||!Number.isSafeInteger(data.minPrice)||data.minPrice<0||data.minPrice>data.price||!Number.isSafeInteger(data.min)||data.min<0||data.min>100000)throw Error('Mahsulot, egasi, tanlangan tur va narxlarni tekshiring.');
   const draft=structuredClone(state);let suffix=1001+draft.products.length;
+  const identity=item=>[item.brand,item.category,item.owner,normalizeSearch(item.name+' '+item.variant)].join('|');
+  const twin=draft.products.find(item=>!item.archivedAt&&!item.grouped&&identity(item)===identity({brand:data.brand,category:data.category,owner:data.owner,name,variant}));
+  if(twin)throw Error(`Bu mahsulot ro‘yxatda bor (${twin.sku}). Qayta yaratmang, mavjud mahsulotga kirim qo‘shing.`);
   while(draft.products.some(p=>p.sku==='TZ-'+suffix))suffix++;
   const product={id:uid(),sku:'TZ-'+suffix,name,variant,brand:data.brand,category:data.category,quality:data.quality||'',qualityLabel:qualityName(data.quality,state),
-    owner:data.owner,price:data.price,minPrice:data.minPrice,min:data.min,lots:[]};
+    owner:data.owner,price:data.price,minPrice:data.minPrice,min:data.min,lots:[],createdBy:actor,createdAt:new Date().toISOString()};
   draft.products.push(product);purchase(draft,product.id,data.qty,data.cost,'Naqd',actor);
   Object.assign(draft.purchases.at(-1),{account:data.account,note});
   Object.assign(state,{products:draft.products,purchases:draft.purchases,audit:draft.audit});return product;
@@ -94,7 +97,7 @@ export function registerCaseGroups(state, data, actor) {
       while (draft.products.some(item=>item.sku==='TZ-'+suffix)) suffix++;
       product={id:uid(),sku:'TZ-'+suffix,brand:data.brand,model,name:material?material+' g‘ilof':'G‘ilof',quality:row.quality,qualityLabel:qualityName(row.quality,state),audience,material,
         grouped:true,variant:model+' · turli rang va naqshlar',category:state.settings.caseCategory||'G‘iloflar',owner:data.owner,
-        price:row.price,minPrice:row.minPrice??row.price,min:data.min??5,lots:[]};
+        price:row.price,minPrice:row.minPrice??row.price,min:data.min??5,lots:[],createdBy:actor,createdAt:new Date().toISOString()};
       draft.products.push(product);
     } else if (product.price !== row.price || product.minPrice !== (row.minPrice??row.price)) {
       setCatalogPrice(draft,product.id,row.price,actor,row.minPrice??row.price);

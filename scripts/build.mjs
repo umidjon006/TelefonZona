@@ -8,5 +8,7 @@ await rm(output, { recursive: true, force: true });
 await mkdir(output, { recursive: true });
 await copyFile(path.join(root, 'index.html'), path.join(output, 'index.html'));
 await copyFile(path.join(root, 'sw.js'), path.join(output, 'sw.js'));
+await copyFile(path.join(root, 'manifest.webmanifest'), path.join(output, 'manifest.webmanifest'));
+await cp(path.join(root, 'icons'), path.join(output, 'icons'), { recursive: true });
 await cp(path.join(root, 'src'), path.join(output, 'src'), { recursive: true });
 console.log('Tayyor: dist/ — statik frontend fayllari.');

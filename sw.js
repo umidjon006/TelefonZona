@@ -1,5 +1,5 @@
-const CACHE='telefonzona-shell-v9';
-const FILES=['/','/index.html','/src/app.js','/src/management.js','/src/model.js','/src/catalog.js','/src/inventory-entry.js','/src/business.js','/src/backup.js','/src/access.js','/src/admin.js','/src/ownership.js','/src/style.css','/src/themes.js','/src/themes.css','/src/responsive.js','/src/responsive.css'];
+const CACHE='telefonzona-shell-v10';
+const FILES=['/','/index.html','/manifest.webmanifest','/icons/icon-192.png','/icons/icon-512.png','/icons/apple-touch-icon.png','/src/app.js','/src/management.js','/src/model.js','/src/catalog.js','/src/inventory-entry.js','/src/intake.js','/src/reminders.js','/src/business.js','/src/backup.js','/src/access.js','/src/admin.js','/src/ownership.js','/src/style.css','/src/themes.js','/src/themes.css','/src/responsive.js','/src/responsive.css'];
 self.addEventListener('install',event=>event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(FILES)).then(()=>self.skipWaiting())));
 self.addEventListener('activate',event=>event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(key=>key.startsWith('telefonzona-shell-')&&key!==CACHE).map(key=>caches.delete(key)))).then(()=>self.clients.claim())));
 // Cache only the frontend shell. Business data lives in the browser; there is

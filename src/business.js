@@ -22,7 +22,7 @@ export function eventTime(event) {return new Date(event.at || `${event.date}T${e
 // Migration is additive. Existing stock lots, receipts and cash entries stay intact.
 export function prepareState(state) {
   prepareAdmin(state);
-  for(const key of ['movements','debts','rents','notices','operations','defects','services'])state[key] ||= [];
+  for(const key of ['movements','debts','rents','notices','operations','defects','services','intakes','inbox'])state[key] ||= [];
   const {openingAccounts,openingCash} = state.settings;
   const openingBalance = openingAccounts
     ? openingAccounts[CASH_ACCOUNT] ?? LEGACY_CASH_ACCOUNTS.reduce((sum,id)=>sum+(openingAccounts[id] ?? 0),0)
