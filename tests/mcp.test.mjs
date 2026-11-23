@@ -200,5 +200,5 @@ test('browser pages from other sites cannot talk to /mcp; the sign-in page canno
   assert.match(page.headers.get('content-security-policy'),/frame-ancestors 'none'/);
   assert.equal(page.headers.get('x-frame-options'),'DENY');
   const html=await page.text();
-  assert.match(html,/faqat o‘qimoqchi/);assert.ok(html.includes('claude.ai'));
+  assert.match(html,/Faqat o‘qish uchun ruxsat/);assert.match(html,/O‘qish va yozish uchun ruxsat/);assert.ok(html.includes('claude.ai'));
 }));

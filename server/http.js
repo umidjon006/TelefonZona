@@ -7,7 +7,7 @@ import {remindersFor} from '../src/reminders.js';
 import {Auth,AuthError} from './auth.js';
 import {CommandError,assertPlain} from './commands.js';
 import {viewFor,receiptFor} from './view.js';
-import {OAuth,OAuthError,SCOPE} from './oauth.js';
+import {OAuth,OAuthError,SCOPE,SCOPE_READ,SCOPE_WRITE,SCOPES} from './oauth.js';
 import {handleMcp} from './mcp.js';
 import {isFrontendPath,CONTENT_TYPES} from '../scripts/frontend-files.mjs';
 
@@ -158,6 +158,15 @@ export async function createApp({store,auth,config,log=()=>{},oauth=new OAuth(st
       if(body.person===actor){const fresh=auth.createSession(actor,req.headers['user-agent']);return send(res,200,{ok:true},{'Set-Cookie':sessionCookie(req,fresh.token,fresh.expiresAt-Date.now())});}
       return send(res,200,{ok:true});
     }
+    if(route==='GET /api/connectors'){
+      const {state}=store.read();
+      return send(res,200,{connectors:oauth.connections(isAdmin(actor)?null:actor).map(c=>({...c,personName:people(state).find(p=>p.id===c.person)?.name||c.person}))});
+    }
+    if(route==='POST /api/connectors/revoke'){
+      const body=await readJson(req);
+      if(!oauth.revokeConnection(body.id,isAdmin(actor)?null:actor))throw new HttpError('Ulanish topilmadi.',404);
+      return send(res,200,{ok:true});
+    }
     if(route==='GET /api/export'){
       if(!isAdmin(actor))throw new HttpError('Bu amal faqat Otabek uchun.',403);
       const {state}=store.read();
@@ -225,10 +234,12 @@ button{width:100%;min-height:50px;border-radius:12px;border:1px solid var(--acce
   function authorizePage(res,params,client,message=''){
     const {state}=store.read();
     let host='';try{host=new URL(params.redirect_uri).host;}catch{}
-    html(res,message?401:200,`<h1>TelefonZona</h1><p><b>${esc(client.name)}</b> sizning nomingizdan TelefonZona ma’lumotlarini <b>faqat o‘qimoqchi</b>. U hech narsani o‘zgartira olmaydi va faqat siz ko‘ra oladigan ma’lumotni ko‘radi.</p><p>Qaytish manzili: <b>${esc(host)}</b></p>
+    html(res,message?401:200,`<h1>TelefonZona</h1><p><b>${esc(client.name)}</b> sizning nomingizdan TelefonZona bilan ishlashni so‘rayapti. Ruxsat darajasini <b>o‘zingiz</b> tanlaysiz; u hech qachon sizning ruxsatlaringizdan oshib keta olmaydi.</p><p>Qaytish manzili: <b>${esc(host)}</b></p>
 <form method="post" action="/authorize">${authorizeFields(params)}${people(state).map(p=>`<label class="p"><input type="radio" name="person" value="${esc(p.id)}" required> <b>${esc(p.name)}</b></label>`).join('')}
 <label>Parol<input type="password" name="password" autocomplete="current-password" required></label><div class="err" role="alert">${esc(message)}</div>
-<button class="go" type="submit" name="decision" value="allow">Ruxsat berish</button><button class="no" type="submit" name="decision" value="deny" formnovalidate>Rad etish</button></form>`);
+<button class="go" type="submit" name="decision" value="allow_read">Faqat o‘qish uchun ruxsat</button><p>Savol-javob: savdo, qoldiq, qarz. Hech narsa o‘zgarmaydi.</p>
+<button class="go" type="submit" name="decision" value="allow_write">O‘qish va yozish uchun ruxsat</button><p>Claude kirim, sotuv, qarz to‘lovi kabi yozuvlarni kiritishi mumkin. Har bir o‘zgarish avval aniq ko‘rsatiladi va faqat sizning tasdig‘ingizdan keyin yoziladi.</p>
+<button class="no" type="submit" name="decision" value="deny" formnovalidate>Rad etish</button></form>`);
   }
   const redirectBack=(res,params,extra)=>{
     const target=new URL(params.redirect_uri);
@@ -245,12 +256,12 @@ button{width:100%;min-height:50px;border-radius:12px;border:1px solid var(--acce
   async function connector(req,res,url){
     const path=url.pathname,base=publicBase(req);
     if(['/.well-known/oauth-protected-resource','/.well-known/oauth-protected-resource/mcp'].includes(path)&&req.method==='GET'){
-      send(res,200,{resource:base+'/mcp',authorization_servers:[base],bearer_methods_supported:['header'],scopes_supported:[SCOPE],resource_name:'TelefonZona'});return true;
+      send(res,200,{resource:base+'/mcp',authorization_servers:[base],bearer_methods_supported:['header'],scopes_supported:SCOPES,resource_name:'TelefonZona'});return true;
     }
     if(path==='/.well-known/oauth-authorization-server'&&req.method==='GET'){
       send(res,200,{issuer:base,authorization_endpoint:base+'/authorize',token_endpoint:base+'/token',registration_endpoint:base+'/register',
         response_types_supported:['code'],grant_types_supported:['authorization_code','refresh_token'],code_challenge_methods_supported:['S256'],
-        token_endpoint_auth_methods_supported:['none'],scopes_supported:[SCOPE]});return true;
+        token_endpoint_auth_methods_supported:['none'],scopes_supported:SCOPES});return true;
     }
     if(path==='/register'&&req.method==='POST'){
       try{send(res,201,oauth.registerClient(await readJson(req),clientIp(req)));}catch(error){
@@ -266,9 +277,11 @@ button{width:100%;min-height:50px;border-radius:12px;border:1px solid var(--acce
         const client=oauth.validateRequest(params);
         if(req.method==='GET'){authorizePage(res,params,client);return true;}
         if(params.decision==='deny'){redirectBack(res,params,{error:'access_denied'});return true;}
+        if(!['allow','allow_read','allow_write'].includes(params.decision)){authorizePage(res,params,client,'Ruxsat darajasini tanlang.');return true;}
         try{await auth.checkCredentials(String(params.person??''),params.password,{ip:clientIp(req)});}
         catch(error){if(error instanceof AuthError){authorizePage(res,params,client,error.message);return true;}throw error;}
-        redirectBack(res,params,{code:oauth.issueCode({client,personId:params.person,redirectUri:params.redirect_uri,challenge:params.code_challenge})});
+        const scope=params.decision==='allow_write'?`${SCOPE_READ} ${SCOPE_WRITE}`:SCOPE_READ;
+        redirectBack(res,params,{code:oauth.issueCode({client,personId:params.person,redirectUri:params.redirect_uri,challenge:params.code_challenge,scope})});
       }catch(error){
         if(!(error instanceof OAuthError))throw error;
         // Never redirect to an address that was not validated: show the problem here instead.
@@ -295,7 +308,7 @@ button{width:100%;min-height:50px;border-radius:12px;border:1px solid var(--acce
         return true;
       }
       const message=await readJson(req,{allowArray:true});
-      const reply=handleMcp({store,actor:grant.personId,message});
+      const reply=handleMcp({store,actor:grant.personId,canWrite:grant.canWrite,message});
       if(reply===null){res.writeHead(202,baseHeaders());res.end();}
       else send(res,200,reply);
       return true;

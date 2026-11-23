@@ -26,6 +26,13 @@ export class Store{
   version(){return this.db.prepare('SELECT version FROM app_state WHERE id=1').get().version;}
 
   execute({actor,command,args,opId}){
+    return this.transact({actor,command,opId},state=>runCommand(state,command,args,actor));
+  }
+
+  // The one place a change is applied: everything fn does to the state is saved together or not at all.
+  // `source` marks the new history entries (for example "claude") so they can be told apart later.
+  // fn may also write to other tables on this connection; they are part of the same transaction.
+  transact({actor,command,opId,source=null},fn){
     if(opId!==undefined&&!OP_ID.test(opId))throw new CommandError('Amal raqami noto‘g‘ri.',400);
     return transaction(this.db,()=>{
       if(opId){
@@ -36,7 +43,10 @@ export class Store{
         }
       }
       const {version,state}=this.read();
-      const result=runCommand(state,command,args,actor);
+      const historyBefore=state.audit.length;
+      const raw=fn(state);
+      const result=raw===undefined?null:raw;
+      if(source)for(let i=0;i<state.audit.length-historyBefore;i++)state.audit[i].via=source;
       this.check(state);
       const next=version+1,json=JSON.stringify(state);
       this.db.prepare('UPDATE app_state SET version=?,json=?,updated_at=? WHERE id=1').run(next,json,this.now().toISOString());

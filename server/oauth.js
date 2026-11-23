@@ -6,7 +6,9 @@ import {randomBytes,createHash,timingSafeEqual} from 'node:crypto';
 import {DEFAULT_PEOPLE} from '../src/access.js';
 import {transaction} from './db.js';
 
-export const SCOPE='mcp:read';
+export const SCOPE_READ='mcp:read',SCOPE_WRITE='mcp:write';
+export const SCOPE=SCOPE_READ;
+export const SCOPES=[SCOPE_READ,SCOPE_WRITE];
 const ACCESS_MS=60*60*1000,REFRESH_MS=30*24*60*60*1000,CODE_MS=10*60*1000;
 const MAX_CLIENTS=200;
 const hash=value=>createHash('sha256').update(value).digest('hex');
@@ -77,18 +79,22 @@ export class OAuth{
     return client;
   }
 
-  issueCode({client,personId,redirectUri,challenge}){
+  // scope is chosen by the person on the sign-in page, never by the app asking for access.
+  issueCode({client,personId,redirectUri,challenge,scope=SCOPE_READ}){
+    const parts=String(scope).split(' ');
+    if(!parts.every(part=>SCOPES.includes(part))||!parts.includes(SCOPE_READ))throw new OAuthError('invalid_scope','Ruxsat turi noto‘g‘ri.');
     const code=random(32);
-    this.db.prepare('INSERT INTO oauth_codes(code_hash,client_id,person_id,redirect_uri,challenge,expires_at) VALUES(?,?,?,?,?,?)')
-      .run(hash(code),client.id,personId,redirectUri,challenge,this.now()+CODE_MS);
+    this.db.prepare('INSERT INTO oauth_codes(code_hash,client_id,person_id,redirect_uri,challenge,scope,expires_at) VALUES(?,?,?,?,?,?,?)')
+      .run(hash(code),client.id,personId,redirectUri,challenge,scope,this.now()+CODE_MS);
     return code;
   }
 
-  tokens(clientId,personId,family){
-    const access=random(32),refresh=random(32),now=this.now();
-    this.db.prepare('INSERT INTO oauth_tokens(token_hash,kind,client_id,person_id,family,expires_at) VALUES(?,?,?,?,?,?)').run(hash(access),'access',clientId,personId,family,now+ACCESS_MS);
-    this.db.prepare('INSERT INTO oauth_tokens(token_hash,kind,client_id,person_id,family,expires_at) VALUES(?,?,?,?,?,?)').run(hash(refresh),'refresh',clientId,personId,family,now+REFRESH_MS);
-    return {access_token:access,token_type:'Bearer',expires_in:ACCESS_MS/1000,refresh_token:refresh,scope:SCOPE};
+  tokens(clientId,personId,family,scope,createdAt){
+    const access=random(32),refresh=random(32),now=this.now(),since=createdAt||now;
+    const insert=this.db.prepare('INSERT INTO oauth_tokens(token_hash,kind,client_id,person_id,family,scope,created_at,expires_at) VALUES(?,?,?,?,?,?,?,?)');
+    insert.run(hash(access),'access',clientId,personId,family,scope,since,now+ACCESS_MS);
+    insert.run(hash(refresh),'refresh',clientId,personId,family,scope,since,now+REFRESH_MS);
+    return {access_token:access,token_type:'Bearer',expires_in:ACCESS_MS/1000,refresh_token:refresh,scope};
   }
 
   exchangeCode({code,clientId,redirectUri,verifier}){
@@ -104,7 +110,7 @@ export class OAuth{
         return {error:'Kod yaroqsiz yoki muddati o‘tgan.'};
       const challenge=createHash('sha256').update(verifier).digest('base64url');
       if(!equal(challenge,row.challenge))return {error:'PKCE tekshiruvi o‘tmadi.'};
-      return {tokens:this.tokens(row.client_id,row.person_id,random(12))};
+      return {tokens:this.tokens(row.client_id,row.person_id,random(12),row.scope)};
     });
     if(outcome.error)throw new OAuthError('invalid_grant',outcome.error);
     return outcome.tokens;
@@ -122,7 +128,7 @@ export class OAuth{
       // Rotation: the old pair stops working; the spent refresh token is remembered to detect reuse.
       this.db.prepare("DELETE FROM oauth_tokens WHERE family=? AND kind='access'").run(row.family);
       this.db.prepare("UPDATE oauth_tokens SET kind='spent' WHERE family=? AND kind='refresh'").run(row.family);
-      return {tokens:this.tokens(row.client_id,row.person_id,row.family)};
+      return {tokens:this.tokens(row.client_id,row.person_id,row.family,row.scope,row.created_at)};
     });
     if(outcome.error)throw new OAuthError('invalid_grant','Refresh token yaroqsiz.');
     return outcome.tokens;
@@ -130,9 +136,22 @@ export class OAuth{
 
   authenticate(bearer){
     if(typeof bearer!=='string'||bearer.length<20||bearer.length>200)return null;
-    const row=this.db.prepare("SELECT person_id,client_id,expires_at FROM oauth_tokens WHERE token_hash=? AND kind='access'").get(hash(bearer));
+    const row=this.db.prepare("SELECT person_id,client_id,scope,expires_at FROM oauth_tokens WHERE token_hash=? AND kind='access'").get(hash(bearer));
     if(!row||row.expires_at<this.now())return null;
-    return DEFAULT_PEOPLE.some(p=>p.id===row.person_id)?{personId:row.person_id,clientId:row.client_id}:null;
+    return DEFAULT_PEOPLE.some(p=>p.id===row.person_id)?{personId:row.person_id,clientId:row.client_id,scope:row.scope,canWrite:row.scope.split(' ').includes(SCOPE_WRITE)}:null;
+  }
+
+  // Connections (one per authorisation), for the boss's and each person's "Claude ulanishlari" list.
+  connections(personId=null){
+    const rows=this.db.prepare(`SELECT t.family,t.client_id,t.person_id,t.scope,MIN(t.created_at) since,MAX(t.expires_at) until,c.name
+      FROM oauth_tokens t LEFT JOIN oauth_clients c ON c.client_id=t.client_id WHERE t.kind IN ('access','refresh') GROUP BY t.family ORDER BY since DESC`).all();
+    return rows.filter(r=>!personId||r.person_id===personId).map(r=>({id:r.family,client:r.name||'Claude',person:r.person_id,scope:r.scope,since:r.since||null,until:r.until}));
+  }
+  revokeConnection(family,personId=null){
+    const row=this.db.prepare('SELECT person_id FROM oauth_tokens WHERE family=? LIMIT 1').get(String(family));
+    if(!row||(personId&&row.person_id!==personId))return false;
+    this.db.prepare('DELETE FROM oauth_tokens WHERE family=?').run(String(family));
+    return true;
   }
 
   // Disconnect every connector a person authorised (also done on password change).

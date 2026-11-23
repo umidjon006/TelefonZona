@@ -251,3 +251,4 @@
 .done-count b{display:inline!important}
 .reminder-row{padding:12px 20px}
 .entry-group{padding:8px 20px 14px}
+.via-claude{color:var(--accent,var(--green));font-weight:600}

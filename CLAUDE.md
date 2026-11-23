@@ -21,8 +21,10 @@ ettirish tartibi bor. Hujjat 2026-11-23 holatiga tayyorlangan.
   `telefonzona-v2`). Ikkalasi `src/commands.js` buyruqlarini ishlatadi: yangi amal
   qo‘shilsa shu yerga qo‘shing, `app.js`da `act()` bilan chaqiring. Oflayn navbat va
   push yo‘q; server hali joylanmagan (HTTPS, tashqi zaxira kerak).
-- Claude connector (MCP) `/mcp`da, faqat o‘qiydi, OAuth bilan kirish shaxsning o‘z ruxsati
-  doirasida ishlaydi ([docs/MCP.md](docs/MCP.md)). Yozish vositalarini foydalanuvchisiz qo‘shmang.
+- Claude connector (MCP) `/mcp`da; OAuth bilan kirish shaxsning o‘z ruxsati doirasida ishlaydi
+  ([docs/MCP.md](docs/MCP.md)). Yozish faqat ikki bosqichda: `prepare_*` (nusxada sinab, aniq natija) va
+  tasdiqdan keyin `commit_change`. Yangi yozish vositasi shu qolipga amal qilsin (qat’iy raqamlar, noma’lum
+  maydon rad etiladi, hammasi-yoki-hech narsa, hisob o‘zgarsa yozilmaydi) va testlarsiz qo‘shilmasin.
 - Ishlayotgan frontendni foydalanuvchining yangi topshirig‘isiz boshqa frameworkda
   boshidan yozmang. Hozir oddiy JavaScript ES modules, CSS, Node.js 22+, tashqi
   paketlarga bog‘liqliksiz ishlaydi.

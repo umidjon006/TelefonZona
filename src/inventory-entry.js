@@ -9,6 +9,25 @@ function validInteger(value, max) {
   return Number.isSafeInteger(value) && value > 0 && value <= max;
 }
 
+// The same product must never exist twice: these two finders define "the same" for plain
+// products and for case groups, and are shared by every way of entering stock.
+const plainIdentity=item=>[item.brand,item.category,item.owner,normalizeSearch(item.name+' '+item.variant)].join('|');
+export function findPlainTwin(products,{brand,category,owner,name,variant}){
+  const key=plainIdentity({brand,category,owner,name:String(name).trim(),variant:String(variant).trim()});
+  return products.find(item=>!item.archivedAt&&!item.grouped&&plainIdentity(item)===key)||null;
+}
+export function caseGroupMatches(state,products,{brand,model,quality,owner,audience='',material=''}){
+  const brandKey=normalizeSearch(catalog(state).brands.find(item=>item.id===brand)?.name||'');
+  const modelKey=value=>{
+    const key=normalizeSearch(value);
+    return key.startsWith(brandKey)?key.slice(brandKey.length):key;
+  };
+  return products.filter(product=>!product.archivedAt && product.grouped===true && product.brand===brand
+    && modelKey(product.model)===modelKey(model) && product.quality===quality
+    && product.owner===owner && (product.audience||'')===(audience||'')
+    && (product.material||'')===(material||'') && product.category===(state.settings.caseCategory||'G‘iloflar'));
+}
+
 export function registerProduct(state,data,actor){
   requirePermission(state,actor,'products');requirePermission(state,actor,'stock');
   const name=String(data.name||'').trim(),variant=String(data.variant||'').trim(),note=String(data.note||'').trim(),config=catalog(state);
@@ -17,8 +36,7 @@ export function registerProduct(state,data,actor){
     ||data.account!==CASH_ACCOUNT||!validInteger(data.qty,100000)||!validInteger(data.cost,1e9)||!validInteger(data.price,1e9)
     ||!Number.isSafeInteger(data.minPrice)||data.minPrice<0||data.minPrice>data.price||!Number.isSafeInteger(data.min)||data.min<0||data.min>100000)throw Error('Mahsulot, egasi, tanlangan tur va narxlarni tekshiring.');
   const draft=structuredClone(state);let suffix=1001+draft.products.length;
-  const identity=item=>[item.brand,item.category,item.owner,normalizeSearch(item.name+' '+item.variant)].join('|');
-  const twin=draft.products.find(item=>!item.archivedAt&&!item.grouped&&identity(item)===identity({brand:data.brand,category:data.category,owner:data.owner,name,variant}));
+  const twin=findPlainTwin(draft.products,{brand:data.brand,category:data.category,owner:data.owner,name,variant});
   if(twin)throw Error(`Bu mahsulot ro‘yxatda bor (${twin.sku}). Qayta yaratmang, mavjud mahsulotga kirim qo‘shing.`);
   while(draft.products.some(p=>p.sku==='TZ-'+suffix))suffix++;
   const product={id:uid(),sku:'TZ-'+suffix,name,variant,brand:data.brand,category:data.category,quality:data.quality||'',qualityLabel:qualityName(data.quality,state),
@@ -78,18 +96,10 @@ export function registerCaseGroups(state, data, actor) {
   }
 
   // Validate and apply all rows to a draft so an invalid row cannot leave a partial receipt.
-  const brandKey=normalizeSearch(catalog(state).brands.find(brand=>brand.id===data.brand).name);
-  const modelKey=value=>{
-    const key=normalizeSearch(value);
-    return key.startsWith(brandKey)?key.slice(brandKey.length):key;
-  };
   const draft = structuredClone(state);
   const result=[];
   for (const row of data.rows) {
-    const matches=draft.products.filter(product=>!product.archivedAt && product.grouped===true && product.brand===data.brand
-      && modelKey(product.model)===modelKey(model) && product.quality===row.quality
-      && product.owner===data.owner && (product.audience||'')===audience
-      && (product.material||'')===material && product.category===(state.settings.caseCategory||'G‘iloflar'));
+    const matches=caseGroupMatches(state,draft.products,{brand:data.brand,model,quality:row.quality,owner:data.owner,audience,material});
     if (matches.length > 1) throw Error('Bu model va sifat guruhida takrorlangan yozuv bor. Avval ularni tekshiring.');
     let product=matches[0];
     if (!product) {

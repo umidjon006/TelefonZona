@@ -39,5 +39,7 @@ export const api={
   receipt:id=>request('GET','/api/receipts/'+encodeURIComponent(id)),
   changePassword:(current,next)=>request('POST','/api/password',{current,next}),
   resetPassword:(person,password)=>request('POST','/api/admin/password',{person,password}),
+  connectors:()=>request('GET','/api/connectors'),
+  revokeConnector:id=>request('POST','/api/connectors/revoke',{id}),
   exportBackup:()=>request('GET','/api/export',undefined,{text:true}),
 };
