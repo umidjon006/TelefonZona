@@ -61,10 +61,10 @@ test('credit and exceptional prices can be disabled independently of ordinary sa
   recordSale(s,[{productId:p.id,qty:1,price:p.price}],'sardor',{account:'cash',received:p.price},at);assert.equal(s.sales.length,1);
 });
 test('explicit stock and price permissions work without revealing or granting reports',()=>{
-  const s=fresh();grant(s,'sardor',{stock:true,prices:true});const p=s.products[0],n=stock(p);
+  const s=fresh();grant(s,'sardor',{stock:true,prices:true,products:false});const p=s.products[0],n=stock(p);
   purchase(s,p.id,2,25000,'Naqd','sardor');setCatalogPrice(s,p.id,80000,'sardor',60000);
   assert.equal(stock(p),n+2);assert.equal(p.minPrice,60000);assert.equal(canVisit(s,'sardor','reports'),false);
-  grant(s,'sardor',{stock:false,prices:false});const before=JSON.stringify(s);assert.throws(()=>purchase(s,p.id,1,20000,'Naqd','sardor'));assert.throws(()=>setCatalogPrice(s,p.id,10000,'sardor'));assert.equal(JSON.stringify(s),before);
+  grant(s,'sardor',{stock:false,prices:false,products:false});const before=JSON.stringify(s);assert.throws(()=>purchase(s,p.id,1,20000,'Naqd','sardor'));assert.throws(()=>setCatalogPrice(s,p.id,10000,'sardor'));assert.equal(JSON.stringify(s),before);
 });
 test('switching owner changes the actual stock group, while mixed-owner revenue all goes into a shared till',()=>{
   const s=fresh(),ids=['aziz','sardor','jasur'].map(owner=>group(s,owner));

@@ -9,7 +9,7 @@ function groupKey(product){
 }
 export function ownerAlternatives(state,product){
   const key=groupKey(product);
-  return state.products.filter(p=>groupKey(p)===key);
+  return state.products.filter(p=>!p.archivedAt&&groupKey(p)===key);
 }
 export function selectCartOwner(state,cart,productId,owner,actor){
   requirePermission(state,actor,'sell');

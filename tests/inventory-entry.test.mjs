@@ -35,6 +35,7 @@ test('group receipt keeps its chosen threshold and invalid changes are atomic',(
   const [group]=registerCaseGroups(state,{...entry(),min:10},'aziz');
   registerCaseGroups(state,{...entry(),min:5},'aziz');
   assert.equal(state.products.find(item=>item.id===group.id).min,10);
+  state.settings.permissions={sardor:{products:false}};
   const before=JSON.stringify(state);
   for(const min of [-1,1.5,NaN,100001]){
     assert.throws(()=>registerCaseGroups(state,{...entry(),min},'aziz'));
@@ -47,9 +48,10 @@ test('group receipt keeps its chosen threshold and invalid changes are atomic',(
   assert.equal(state.products.find(item=>item.id===group.id).min,2);
 });
 
-test('both sellers cannot change catalog price, add stock or create groups, even for their own goods',()=>{
+test('explicitly revoked catalog and stock permissions prevent both sellers from changing goods',()=>{
   for(const actor of ['sardor','jasur']) {
     const state=makeSeed();
+    state.settings.permissions={[actor]:{products:false,stock:false,prices:false}};
     const product=state.products.find(product=>product.owner==='sardor');
     const before=JSON.stringify(state);
     assert.throws(()=>setCatalogPrice(state,product.id,10000,actor));

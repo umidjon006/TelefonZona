@@ -22,7 +22,7 @@ export function eventTime(event) {return new Date(event.at || `${event.date}T${e
 // Migration is additive. Existing stock lots, receipts and cash entries stay intact.
 export function prepareState(state) {
   prepareAdmin(state);
-  for(const key of ['movements','debts','rents','notices','operations','defects'])state[key] ||= [];
+  for(const key of ['movements','debts','rents','notices','operations','defects','services'])state[key] ||= [];
   const {openingAccounts,openingCash} = state.settings;
   const openingBalance = openingAccounts
     ? openingAccounts[CASH_ACCOUNT] ?? LEGACY_CASH_ACCOUNTS.reduce((sum,id)=>sum+(openingAccounts[id] ?? 0),0)
@@ -155,7 +155,7 @@ export function accountBalances(state) {
   prepareState(state);
   let balance = state.settings.openingAccounts[CASH_ACCOUNT];
   for(const sale of state.sales.filter(s=>!s.ledger&&!s.returned))balance+=saleTotal(sale);
-  for(const entry of [...state.expenses,...state.purchases,...state.payouts].filter(e=>!e.ledger)) {
+  for(const entry of [...state.expenses,...state.purchases,...state.payouts].filter(e=>!e.ledger&&!e.deletedAt)) {
     if(entry.account!=='personal'&&entry.payment!=='Shaxsiy pul')balance-=entry.amount??entry.qty*entry.cost;
   }
   // Transfers between the former cash and bank accounts net to zero in the combined balance.
@@ -180,6 +180,7 @@ export function setRent(state, month, amount, note, actor, at=new Date()) {
   let rent=state.rents.find(r=>r.month===month);
   if(rent&&amount<rent.paid)throw Error('Ijara summasi to‘langan puldan kam bo‘lmasin.');
   if(!rent){rent={id:uid(),month,paid:0};state.rents.push(rent);}
+  delete rent.cancelledAt;delete rent.cancelReason;
   Object.assign(rent,{amount,note,actor,at:timestamp(at)});
   operation(state,actor,'rent',`${month}: ${amount} so‘m oylik ijara belgilandi`,at);
   return rent;
@@ -310,10 +311,16 @@ export function businessReport(state,{period='month',owner='all',seller='all',at
     }
     if(original.kind==='income'&&storeScope)income-=original.amount;
   }
-  const loss=state.defects.filter(d=>d.kind==='dispose'&&inWindow(d,window)&&(owner==='all'||d.owner===owner)&&(seller==='all'||d.actor===seller)).reduce((s,d)=>s+d.cost,0);
+  let serviceProfit=0,serviceCount=0;
+  for(const service of state.services){
+    if(owner!=='all'&&service.worker!==owner||seller!=='all'&&service.worker!==seller)continue;
+    const factor=(inWindow(service,window)?1:0)-(service.cancelledAt&&inWindow({at:service.cancelledAt},window)?1:0);
+    serviceProfit+=factor*service.profit;serviceCount+=factor;
+  }
+  const loss=state.defects.filter(d=>d.kind==='dispose'&&(inWindow(d,window)||d.cancelledAt&&inWindow({at:d.cancelledAt},window))&&(owner==='all'||d.owner===owner)&&(seller==='all'||d.actor===seller)).reduce((s,d)=>s+((inWindow(d,window)?1:0)-(d.cancelledAt&&inWindow({at:d.cancelledAt},window)?1:0))*d.cost,0);
   const rentIncluded=['month','year','all'].includes(period)&&storeScope&&seller==='all';
   const rent=rentIncluded?state.rents.filter(r=>inWindow({date:r.month+'-01',time:'07:00'},window)).reduce((s,r)=>s+r.amount,0):0;
-  return {revenue,cogs,gross:revenue-cogs,units,count,expenses,income,loss,rent,rentIncluded,net:revenue-cogs+income-expenses-loss-rent,window};
+  return {revenue,cogs,gross:revenue-cogs,units,count,expenses,income,serviceProfit,serviceCount,loss,rent,rentIncluded,net:revenue-cogs+income+serviceProfit-expenses-loss-rent,window};
 }
 export function debtReminders(state,at=new Date()) {const today=localDate(at);return state.debts.filter(d=>d.balance>0&&d.due<=today);}
 export function disposeStock(state, productId, qty, note, actor, at=new Date()) {
@@ -322,10 +329,10 @@ export function disposeStock(state, productId, qty, note, actor, at=new Date()) 
   const p=state.products.find(p=>p.id===productId);
   if(!p||!Number.isSafeInteger(qty)||qty<1||qty>stock(p))throw Error('Hisobdan chiqariladigan sonni tekshiring.');
   return atomic(state,draft=>{
-    const product=draft.products.find(p=>p.id===productId);let left=qty,total=0;
-    for(const lot of product.lots){const n=Math.min(left,lot.qty);lot.qty-=n;total+=n*lot.cost;left-=n;if(!left)break;}
+    const product=draft.products.find(p=>p.id===productId);let left=qty,total=0,alloc=[];
+    for(const lot of product.lots){const n=Math.min(left,lot.qty);if(n)alloc.push({lotId:lot.id,qty:n,cost:lot.cost});lot.qty-=n;total+=n*lot.cost;left-=n;if(!left)break;}
     const op=operation(draft,actor,'dispose',`${product.sku}: ${qty} dona yaroqsiz. ${note}`,at);
-    const entry={id:uid(),kind:'dispose',productId,owner:product.owner,qty,cost:total,note,actor,at:timestamp(at),operationId:op};draft.defects.push(entry);
+    const entry={id:uid(),kind:'dispose',productId,owner:product.owner,qty,cost:total,alloc,note,actor,at:timestamp(at),operationId:op};draft.defects.push(entry);
     notify(draft,actor,`${product.sku}: ${qty} dona yaroqsiz mahsulot chiqarildi. ${note}`,at);return entry;
   });
 }

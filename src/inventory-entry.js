@@ -83,17 +83,17 @@ export function registerCaseGroups(state, data, actor) {
   const draft = structuredClone(state);
   const result=[];
   for (const row of data.rows) {
-    const matches=draft.products.filter(product=>product.grouped===true && product.brand===data.brand
+    const matches=draft.products.filter(product=>!product.archivedAt && product.grouped===true && product.brand===data.brand
       && modelKey(product.model)===modelKey(model) && product.quality===row.quality
       && product.owner===data.owner && (product.audience||'')===audience
-      && (product.material||'')===material && product.category==='G‘iloflar');
+      && (product.material||'')===material && product.category===(state.settings.caseCategory||'G‘iloflar'));
     if (matches.length > 1) throw Error('Bu model va sifat guruhida takrorlangan yozuv bor. Avval ularni tekshiring.');
     let product=matches[0];
     if (!product) {
       let suffix=1001+draft.products.length;
       while (draft.products.some(item=>item.sku==='TZ-'+suffix)) suffix++;
       product={id:uid(),sku:'TZ-'+suffix,brand:data.brand,model,name:material?material+' g‘ilof':'G‘ilof',quality:row.quality,qualityLabel:qualityName(row.quality,state),audience,material,
-        grouped:true,variant:model+' · turli rang va naqshlar',category:'G‘iloflar',owner:data.owner,
+        grouped:true,variant:model+' · turli rang va naqshlar',category:state.settings.caseCategory||'G‘iloflar',owner:data.owner,
         price:row.price,minPrice:row.minPrice??row.price,min:data.min??5,lots:[]};
       draft.products.push(product);
     } else if (product.price !== row.price || product.minPrice !== (row.minPrice??row.price)) {

@@ -4,7 +4,7 @@ import {DEFAULT_PEOPLE,PERMISSIONS,ensureAccess,isAdmin} from './access.js';
 
 export const DEFAULT_MATERIALS=['Karbon','Silikon','Shaffof','Charm','Boshqa'];
 export const DEFAULT_CATEGORIES=['G‘iloflar','Quvvatlagichlar','Kabellar','Quloqchinlar','Himoya oynalari','Aqlli soatlar','Soat aksessuarlari','Avto aksessuarlar'];
-export const catalog=state=>({categories:DEFAULT_CATEGORIES,materials:DEFAULT_MATERIALS,qualities:QUALITY_TIERS,brands:BRANDS,...state?.settings?.catalog});
+export const catalog=state=>{const config={categories:DEFAULT_CATEGORIES,materials:DEFAULT_MATERIALS,qualities:QUALITY_TIERS,brands:BRANDS,...state?.settings?.catalog};return {...config,brands:config.brands.filter(x=>!x.archived),qualities:config.qualities.filter(x=>!x.archived)};};
 export function prepareAdmin(state){
   ensureAccess(state);
   state.settings.catalog ||= {};
@@ -44,3 +44,29 @@ export function saveStaffPermissions(state,personId,name,permissions,actor){
   state.settings.permissions[personId]=Object.fromEntries(PERMISSIONS.map(p=>[p.id,permissions[p.id]??false]));
   log(state,actor,value+' ismi va amallar ruxsatlari yangilandi');
 }
+
+export function changeCatalogOption(state,kind,value,input,actor,remove=false,replacement=''){
+  adminOnly(actor);
+  if(!['categories','materials','qualities','brands'].includes(kind))throw Error('Tasnif turini tanlang.');
+  const list=catalog(state)[kind],objectKind=['qualities','brands'].includes(kind),index=list.findIndex(x=>(objectKind?x.id:x)===value),entry=list[index];
+  if(index<0)throw Error('Tasnif topilmadi.');
+  const field={categories:'category',materials:'material',qualities:'quality',brands:'brand'}[kind];
+  const products=state.products.filter(p=>p[field]===value);
+  const name=remove?'':cleanName(input);
+  if(remove){
+    if(list.length<=1)throw Error('Kamida bitta tanlov qolishi kerak.');
+    if(products.length&&!list.some(x=>(objectKind?x.id:x)===replacement&&replacement!==value))throw Error('Shu tasnifdagi mahsulotlar uchun boshqa tanlovni belgilang.');
+  }else if(list.some((x,i)=>i!==index&&key(objectKind?x.name:x)===key(name)))throw Error('Bu nom allaqachon bor.');
+  prepareAdmin(state);const before=structuredClone(entry);
+  if(remove){
+    if(objectKind)state.settings.catalog[kind].find(x=>x.id===value).archived=true;
+    else state.settings.catalog[kind]=state.settings.catalog[kind].filter(x=>x!==value);
+    for(const p of products)p[field]=replacement;
+  }else if(objectKind){const target=state.settings.catalog[kind].find(x=>x.id===value);target.name=name;if(kind==='brands')target.mark=name;}
+  else {state.settings.catalog[kind]=state.settings.catalog[kind].map(x=>x===value?name:x);for(const p of products)p[field]=name;}
+  if(kind==='qualities')for(const p of state.products){p.qualityLabel=(state.settings.catalog.qualities.find(q=>q.id===p.quality)?.name)||'';}
+  if(kind==='categories'&&(state.settings.caseCategory||'G‘iloflar')===value)state.settings.caseCategory=remove?replacement:name;
+  log(state,actor,`${remove?'Tasnif o‘chirildi':'Tasnif tahrirlandi'}: ${typeof before==='string'?before:before.name}${remove?'':' → '+name}. ${products.length} mahsulot guruhi yangilandi; eski cheklar saqlandi.`);
+}
+
+export function renameAdmin(state,name,actor){adminOnly(actor);const value=cleanName(name);if(!/^[\p{L}\p{N}\s‘’ʻʼ'.-]+$/u.test(value))throw Error("Ism belgilarini tekshiring.");prepareAdmin(state);state.settings.people.find(p=>p.id===actor).name=value;log(state,actor,"Boshliq ismi yangilandi");}

@@ -10,8 +10,9 @@ export const PERMISSIONS=[
   {id:'credit',label:'Nasiya savdo qilish',default:true},
   {id:'priceException',label:'Narx oralig‘idan tashqarida sotish',default:true},
   {id:'inventory',label:'Mahsulotlar va qoldiqni ko‘rish',default:true},
-  {id:'products',label:'Mahsulot qo‘shish · tannarx kiritiladi',default:false},
-  {id:'stock',label:'Tovar kirimi · tannarx bilan',default:false},
+  {id:'products',label:'Mahsulot qo‘shish va tahrirlash · tannarx kiritiladi',default:true},
+  {id:'services',label:'Qo‘shimcha xizmat foydasini kiritish',default:true},
+  {id:'stock',label:'Tovar kirimi · tannarx bilan',default:true},
   {id:'prices',label:'Katalog narx oralig‘ini o‘zgartirish',default:false},
   {id:'cash',label:'Izohli kirim va chiqim yozish',default:true},
   {id:'debts',label:'Qarzdorlarni ko‘rish va to‘lov olish',default:true},
@@ -45,12 +46,18 @@ export function ensureAccess(state){
     state.settings.permissions[person.id] ||= {};
     for(const permission of PERMISSIONS)state.settings.permissions[person.id][permission.id]??=permission.default;
   }
+  if(!state.settings.sharedWorkplaceVersion){
+    // Earlier releases stored false as the default. Preserve intentional owner choices.
+    const customized=(state.audit||[]).some(a=>a.text?.includes('ismi va amallar ruxsatlari yangilandi'));
+    if(!customized)for(const person of DEFAULT_PEOPLE.filter(p=>!isAdmin(p.id))){state.settings.permissions[person.id].products=true;state.settings.permissions[person.id].stock=true;}
+    state.settings.sharedWorkplaceVersion=1;
+  }
   return state;
 }
 export function canVisit(state,actor,page){
   if(!DEFAULT_PEOPLE.some(p=>p.id===actor))return false;
   if(isAdmin(actor))return true;
   if(['dashboard','settings','sales'].includes(page))return true;
-  const gate={pos:'sell',inventory:'inventory',lowstock:'inventory',cash:'cash',debts:'debts'}[page];
+  const gate={pos:'sell',inventory:'inventory',lowstock:'inventory',cash:'cash',debts:'debts',services:'services'}[page];
   return !!gate&&can(state,actor,gate);
 }

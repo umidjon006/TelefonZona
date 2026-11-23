@@ -5,7 +5,7 @@ import {DEFAULT_PEOPLE,PERMISSIONS} from './access.js';
 
 export const MAX_BACKUP_BYTES=8*1024*1024;
 const rootArrays=['products','sales','expenses','purchases','payouts','closings','audit'];
-const optionalArrays=['movements','debts','rents','notices','operations','defects'];
+const optionalArrays=['movements','debts','rents','notices','operations','defects','services'];
 const movementKinds=['expense','income','contribution','withdrawal','transfer','reimbursement','debt-payment','rent-payment','sale-payment','refund','reversal'];
 const ownerIDs=new Set(OWNERS.map(o=>o.id)),userIDs=new Set(USERS.map(u=>u.id));
 const accountIDs=new Set([...ACCOUNTS.map(([id])=>id),...LEGACY_CASH_ACCOUNTS]);
@@ -56,9 +56,10 @@ export function readBackup(raw) {
   if(state.settings.openingPayables!==undefined){object(state.settings.openingPayables,'xodimga boshlang‘ich qarz');for(const [id,value] of Object.entries(state.settings.openingPayables)){actor(id,'boshlang‘ich qarz');integer(value,'xodimga boshlang‘ich qarz');}}
   const products=new Map(state.products.map(p=>[p.id,p]));
   for(const p of state.products) {
+    if(p.archivedAt!==undefined)at(p.archivedAt,'mahsulot arxiv sanasi');
     text(p.name,'mahsulot nomi',200);owner(p.owner,'mahsulot');integer(p.price,'yuqori narx',false);integer(p.min,'kam qoldiq');
     if(p.minPrice!==undefined){integer(p.minPrice,'eng kam narx');if(p.minPrice>p.price)fail('narx oralig‘i');}
-    if(p.quality&&!catalog(state).qualities.some(q=>q.id===p.quality))fail('sifat');
+    if(p.quality&&!(state.settings.catalog?.qualities||catalog(state).qualities).some(q=>q.id===p.quality))fail('sifat');
     uniqueIDs(p.lots,'tovar partiyasi');
     for(const lot of p.lots){integer(lot.qty,'partiya soni');integer(lot.cost,'partiya tannarxi');}
   }
@@ -77,7 +78,7 @@ export function readBackup(raw) {
     if(s.received!==undefined){integer(s.received,'olingan pul');if(s.received>total)fail('olingan pul');account(s.account,'sotuv');}
   }
   for(const e of state.expenses){event(e,'xarajat');integer(e.amount,'xarajat summasi',false);owner(e.owner,'xarajat');if(e.actor!==undefined)actor(e.actor,'xarajat');text(e.category,'xarajat turi');payment(e.payment,'xarajat');}
-  for(const p of state.purchases){event(p,'kirim');if(!products.has(p.productId))fail('kirim mahsuloti');integer(p.qty,'kirim soni',false);integer(p.cost,'kirim tannarxi',false);owner(p.owner,'kirim');payment(p.payment,'kirim');if(p.account!==undefined)account(p.account,'kirim');}
+  for(const p of state.purchases){if(p.deletedAt!==undefined)at(p.deletedAt,'kirim o‘chirish sanasi');event(p,'kirim');if(!products.has(p.productId))fail('kirim mahsuloti');integer(p.qty,'kirim soni',false);integer(p.cost,'kirim tannarxi',false);owner(p.owner,'kirim');payment(p.payment,'kirim');if(p.account!==undefined)account(p.account,'kirim');if(p.lotId&&!products.get(p.productId).lots.some(l=>l.id===p.lotId))fail('kirim partiyasi');}
   for(const p of state.payouts){event(p,'avvalgi to‘lov');integer(p.amount,'avvalgi to‘lov summasi');payment(p.payment,'avvalgi to‘lov');}
   const movements=new Map(state.movements.map(m=>[m.id,m]));
   for(const m of state.movements){event(m,'pul harakati');actor(m.actor,'pul harakati');if(!movementKinds.includes(m.kind))fail('pul harakati turi');integer(m.amount,'pul harakati summasi',m.kind==='sale-payment'||m.kind==='refund');account(m.account,'pul harakati',['expense','rent-payment','reversal'].includes(m.kind));
@@ -90,20 +91,21 @@ export function readBackup(raw) {
     if(m.kind==='reversal'){const original=movements.get(m.reversalOf);if(!original||['reversal','sale-payment','refund'].includes(original.kind)||original.voidedBy!==m.id||original.amount!==m.amount||original.account!==m.account)fail('bekor qilish bog‘lanishi');}
     if(m.voidedBy){const reversal=movements.get(m.voidedBy);if(!reversal||reversal.reversalOf!==m.id)fail('bekor qilingan yozuv havolasi');}
   }
-  for(const r of state.rents){if(!/^\d{4}-(0[1-9]|1[0-2])$/.test(r.month))fail('ijara oyi');integer(r.amount,'ijara summasi');integer(r.paid,'to‘langan ijara');if(r.paid>r.amount)fail('ijara qoldig‘i');}
+  for(const r of state.rents){if(r.cancelledAt!==undefined)at(r.cancelledAt,'ijara bekor sanasi');if(!/^\d{4}-(0[1-9]|1[0-2])$/.test(r.month))fail('ijara oyi');integer(r.amount,'ijara summasi');integer(r.paid,'to‘langan ijara');if(r.paid>r.amount)fail('ijara qoldig‘i');}
   if(new Set(state.rents.map(r=>r.month)).size!==state.rents.length)fail('takrorlangan ijara oyi');
   for(const d of state.debts){text(d.customer,'qarzdor ismi',100);text(d.phone,'qarzdor telefoni',30);date(d.due,'qarz muddati');integer(d.original,'boshlang‘ich qarz',false);integer(d.balance,'qarz qoldig‘i');uniqueIDs(d.payments,'qarz to‘lovlari');if((!d.opening||d.saleId!==undefined)&&!sales.has(d.saleId))fail('qarz cheki');
     let paid=0;for(const p of d.payments){integer(p.amount,'qarz to‘lovi',false);account(p.account,'qarz to‘lovi');const m=movements.get(p.id);if(!m||m.kind!=='debt-payment'||m.reference!==d.id||m.amount!==p.amount||m.voidedBy!==p.voidedBy)fail('qarz to‘lovlari bog‘lanishi');if(!p.voidedBy)paid+=p.amount;}
     integer(d.cancelled||0,'bekor qilingan qarz');if(d.original!==d.balance+paid+(d.cancelled||0))fail('qarz to‘lovlari jami');
   }
   for(const m of state.movements){if(m.kind==='debt-payment'&&!state.debts.some(d=>d.id===m.reference&&d.payments.some(p=>p.id===m.id)))fail('qarz to‘lovi havolasi');if(m.kind==='rent-payment'&&!state.rents.some(r=>r.id===m.reference))fail('ijara to‘lovi havolasi');}
-  for(const c of state.closings){event(c,'kassa sanog‘i');integer(c.actual,'sanalgan pul');if(!Number.isSafeInteger(c.expected))fail('kutilgan pul');if(c.actor!==undefined)actor(c.actor,'kassa sanog‘i');for(const key of ['float','float1','float2','till1','till2'])if(c[key]!==undefined)integer(c[key],'kassa sanog‘i');
+  for(const c of state.closings){if(c.cancelledAt!==undefined)at(c.cancelledAt,'sanash bekor sanasi');event(c,'kassa sanog‘i');integer(c.actual,'sanalgan pul');if(!Number.isSafeInteger(c.expected))fail('kutilgan pul');if(c.actor!==undefined)actor(c.actor,'kassa sanog‘i');for(const key of ['float','float1','float2','till1','till2'])if(c[key]!==undefined)integer(c[key],'kassa sanog‘i');
     if(c.expectedAccounts!==undefined){object(c.expectedAccounts,'kutilgan kassalar');for(const id of ['till1','till2'])if(!Number.isSafeInteger(c.expectedAccounts[id]))fail('kutilgan kassa qoldig‘i');}
     if(c.withdrawalIds!==undefined){array(c.withdrawalIds,'kassadan topshirish');for(const id of c.withdrawalIds){const m=movements.get(id);if(!m||m.kind!=='withdrawal'||m.reference!==c.id)fail('kassadan topshirilgan pul havolasi');}}
   }
+  for(const service of state.services){event(service,'xizmat');actor(service.actor,'xizmat');actor(service.worker,'xizmatni bajargan');text(service.title,'xizmat nomi',100);text(service.note,'xizmat izohi');integer(service.profit,'xizmat foydasi');if(service.cancelledAt!==undefined){at(service.cancelledAt,'xizmat bekor sanasi');actor(service.cancelledActor,'xizmatni bekor qilgan');if(Date.parse(service.cancelledAt)<Date.parse(service.at))fail('xizmat bekor sanasi');}if(service.replaces&&!state.services.some(s=>s.id===service.replaces&&s.cancelledAt))fail('xizmat tuzatish havolasi');}
   for(const a of state.audit){event(a,'amallar tarixi');actor(a.actor,'amallar tarixi');text(a.text,'amal izohi',2000);}
   for(const n of state.notices){event(n,'eslatma');actor(n.actor,'eslatma');text(n.text,'eslatma izohi',2000);}
-  for(const d of state.defects){event(d,'nuqson');if(!products.has(d.productId))fail('nuqson mahsuloti');integer(d.qty,'nuqson soni',false);integer(d.cost,'nuqson tannarxi');actor(d.actor,'nuqson');owner(d.owner,'nuqson');}
+  for(const d of state.defects){if(d.cancelledAt!==undefined)at(d.cancelledAt,'nuqson bekor sanasi');if(d.alloc!==undefined){array(d.alloc,'nuqson partiyalari');for(const a of d.alloc){text(a.lotId,'nuqson partiya raqami');integer(a.qty,'nuqson partiya soni',false);integer(a.cost,'nuqson partiya tannarxi');}if(d.alloc.reduce((s,a)=>s+a.qty,0)!==d.qty||d.alloc.reduce((s,a)=>s+a.qty*a.cost,0)!==d.cost)fail('nuqson partiya hisobi');}event(d,'nuqson');if(!products.has(d.productId))fail('nuqson mahsuloti');integer(d.qty,'nuqson soni',false);integer(d.cost,'nuqson tannarxi');actor(d.actor,'nuqson');owner(d.owner,'nuqson');}
   prepareState(state);
   for(const value of Object.values(accountBalances(state)))if(!Number.isSafeInteger(value))fail('pul qoldig‘i hisobi');
   for(const person of ['jasur','sardor'])if(!Number.isSafeInteger(staffPayable(state,person))||staffPayable(state,person)<0)fail('xodimga qarz hisobi');
@@ -111,6 +113,6 @@ export function readBackup(raw) {
 }
 
 export function backupSummary(state) {
-  return {products:state.products.length,units:state.products.reduce((sum,p)=>sum+p.lots.reduce((n,l)=>n+l.qty,0),0),sales:state.sales.length,
+  return {products:state.products.length,units:state.products.reduce((sum,p)=>sum+p.lots.reduce((n,l)=>n+l.qty,0),0),sales:state.sales.length,services:state.services.filter(s=>!s.cancelledAt).length,
     debt:state.debts.reduce((sum,d)=>sum+d.balance,0),movements:state.movements.length,balances:accountBalances(state)};
 }

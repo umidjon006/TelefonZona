@@ -133,6 +133,6 @@ test('a fresh shop has no records or money and round-trips as an empty backup',a
     assert.deepEqual(state[key],[],key);
   }
   assert.deepEqual(backupSummary(readBackup(JSON.stringify(state))),{
-    products:0,units:0,sales:0,debt:0,movements:0,balances:{cash:0},
+    products:0,units:0,sales:0,services:0,debt:0,movements:0,balances:{cash:0},
   });
 });
